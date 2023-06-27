@@ -7,6 +7,7 @@ import (
 
 	"go.flipt.io/fidgit"
 	"go.flipt.io/fidgit/collections/flipt"
+	"go.flipt.io/fidgit/internal/source/local"
 	"golang.org/x/exp/slog"
 )
 
@@ -16,17 +17,24 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	server := fidgit.NewServer()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	collection, err := fidgit.CollectionFor[*flipt.Flag](context.Background(), &flipt.FlagCollectionFactory{})
+	manager := fidgit.NewService(local.New(ctx, "."))
+
+	collection, err := fidgit.CollectionFor[flipt.Flag](context.Background(), &flipt.FlagCollectionFactory{})
 	if err != nil {
 		slog.Error("Building Collection", "error", err)
 		os.Exit(1)
 	}
 
-	server.RegisterCollection(collection)
+	manager.RegisterCollection(collection)
 
-	http.Handle("/", server)
+	manager.Start(context.Background())
+
+	server := fidgit.NewServer(manager)
+
+	http.Handle("/api/v1/", server)
 
 	slog.Info("Listening", slog.String("addr", ":9191"))
 
