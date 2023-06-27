@@ -44,40 +44,40 @@ func New(ctx context.Context, path string) *Source {
 	return src
 }
 
-func (s *Source) Get(ctx context.Context) (fs.FS, error) {
+func (s *Source) Get(ctx context.Context) (fs.FS, string, error) {
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, "", ctx.Err()
 	case fs, ok := <-s.ch:
 		if !ok {
-			return nil, errors.New("source has shutdown")
+			return nil, "", errors.New("source has shutdown")
 		}
 
-		return fs, nil
+		return fs, "static", nil
 	}
 }
 
-func (s *Source) Propose(_ context.Context, req fidgit.ProposeRequest) error {
+func (s *Source) Propose(_ context.Context, req fidgit.ProposeRequest) (*fidgit.Proposal, error) {
 	for _, change := range req.Changes {
 		slog.Debug("Handling Change", "path", change.Path)
 
 		rel, err := filepath.Rel(s.path, change.Path)
 		if err != nil {
-			return fmt.Errorf("local: proposing change: %w", err)
+			return nil, fmt.Errorf("local: proposing change: %w", err)
 		}
 
 		slog.Debug("Relative Path", "path", rel)
 
 		if dir, _ := filepath.Split(rel); dir != "" {
 			if err := os.MkdirAll(dir, 0755); err != nil {
-				return fmt.Errorf("local: proposing change: %w", err)
+				return nil, fmt.Errorf("local: proposing change: %w", err)
 			}
 		}
 
 		if err := os.WriteFile(rel, change.Contents, 0644); err != nil {
-			return fmt.Errorf("local: proposing change: %w", err)
+			return nil, fmt.Errorf("local: proposing change: %w", err)
 		}
 	}
 
-	return nil
+	return &fidgit.Proposal{Status: "done"}, nil
 }

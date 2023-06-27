@@ -8,21 +8,23 @@ import (
 	"io/fs"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/exp/slog"
 )
 
 type Source interface {
-	Get(context.Context) (fs.FS, error)
-	Propose(context.Context, ProposeRequest) error
+	Get(context.Context) (fs.FS, string, error)
+	Propose(context.Context, ProposeRequest) (*Proposal, error)
 }
 
 type ProposeRequest struct {
-	Revision string `json:"revision"`
-	Changes  []File `json:"changes"`
+	Revision string   `json:"revision"`
+	Changes  []Change `json:"changes"`
 }
 
-type File struct {
+type Change struct {
 	Path     string
+	Message  string
 	Contents []byte
 }
 
@@ -31,31 +33,53 @@ type Proposal struct {
 	ID     *string `json:"id,omitempty"`
 }
 
+type entry struct {
+	revision string
+	fn       FactoryFunc
+}
+
 type Service struct {
-	collections map[Type]*Collection
-	source      Source
+	source Source
+
+	mu     sync.RWMutex
+	latest map[Type]*entry
+	cache  *lru.Cache[cacheKey, *Collection]
 
 	once sync.Once
 	done chan struct{}
 }
 
-func NewService(source Source) *Service {
-	return &Service{
-		source:      source,
-		collections: map[Type]*Collection{},
-		done:        make(chan struct{}),
-	}
+type cacheKey struct {
+	Type
+	Revision string
 }
 
-func (m *Service) RegisterCollection(c *Collection) {
-	m.collections[c.typ] = c
+func NewService(source Source) (*Service, error) {
+	service := &Service{
+		source: source,
+		latest: map[Type]*entry{},
+		done:   make(chan struct{}),
+	}
+
+	cache, err := lru.New[cacheKey, *Collection](2)
+	if err != nil {
+		return nil, err
+	}
+
+	service.cache = cache
+
+	return service, nil
+}
+
+func (m *Service) RegisterFactory(typ Type, fn FactoryFunc) {
+	m.latest[typ] = &entry{fn: fn}
 }
 
 func (m *Service) Start(ctx context.Context) error {
 	err := errors.New("manager already started")
 
 	m.once.Do(func() {
-		err = m.update(ctx)
+		err = m.updateCache(ctx)
 		go func() {
 			defer close(m.done)
 			for {
@@ -63,7 +87,7 @@ func (m *Service) Start(ctx context.Context) error {
 					return
 				}
 
-				if err := m.update(ctx); err != nil {
+				if err := m.updateCache(ctx); err != nil {
 					slog.Error("Updating collections", "error", err)
 				}
 			}
@@ -73,17 +97,29 @@ func (m *Service) Start(ctx context.Context) error {
 	return err
 }
 
-func (m *Service) collection(typ Type) (*Collection, error) {
-	c, ok := m.collections[typ]
-	if !ok {
-		return nil, fmt.Errorf("collection %q: not found", typ)
+func (m *Service) collection(typ Type, rev string) (*Collection, string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if rev == "" {
+		entry, ok := m.latest[typ]
+		if !ok {
+			return nil, "", fmt.Errorf("collection %q: not found", typ)
+		}
+
+		rev = entry.revision
 	}
 
-	return c, nil
+	c, ok := m.cache.Get(cacheKey{typ, rev})
+	if !ok {
+		return nil, "", fmt.Errorf("collection %q (%s): not found", typ, rev)
+	}
+
+	return c, rev, nil
 }
 
 func (m *Service) Get(ctx context.Context, typ Type, ns Namespace, id ID) ([]byte, error) {
-	c, err := m.collection(typ)
+	c, _, err := m.collection(typ, "")
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +128,7 @@ func (m *Service) Get(ctx context.Context, typ Type, ns Namespace, id ID) ([]byt
 }
 
 func (m *Service) List(ctx context.Context, typ Type, ns Namespace) ([]byte, error) {
-	c, err := m.collection(typ)
+	c, _, err := m.collection(typ, "")
 	if err != nil {
 		return nil, err
 	}
@@ -100,30 +136,35 @@ func (m *Service) List(ctx context.Context, typ Type, ns Namespace) ([]byte, err
 	return c.List(ctx, ns)
 }
 
-func (m *Service) Put(ctx context.Context, typ Type, ns Namespace, body []byte) ([]byte, error) {
-	c, err := m.collection(typ)
+func (m *Service) Put(ctx context.Context, typ Type, req CollectionPutRequest) ([]byte, error) {
+	var rev string
+	if req.Revision != nil {
+		rev = *req.Revision
+	}
+
+	c, rev, err := m.collection(typ, rev)
 	if err != nil {
 		return nil, err
 	}
 
-	changes, err := c.Put(ctx, ns, body)
+	changes, err := c.Put(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("putting item: %w", err)
 	}
 
-	if err := m.source.Propose(ctx, ProposeRequest{
-		Changes: changes,
-	}); err != nil {
-		return nil, err
-	}
-
-	return json.Marshal(&Proposal{
-		Status: "done",
+	proposal, err := m.source.Propose(ctx, ProposeRequest{
+		Changes:  changes,
+		Revision: rev,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("proposing changes: %w", err)
+	}
+
+	return json.Marshal(proposal)
 }
 
 func (m *Service) Delete(ctx context.Context, typ Type, ns Namespace, id ID) ([]byte, error) {
-	c, err := m.collection(typ)
+	c, rev, err := m.collection(typ, "")
 	if err != nil {
 		return nil, err
 	}
@@ -133,28 +174,37 @@ func (m *Service) Delete(ctx context.Context, typ Type, ns Namespace, id ID) ([]
 		return nil, err
 	}
 
-	if err := m.source.Propose(ctx, ProposeRequest{
-		Changes: changes,
-	}); err != nil {
+	propsal, err := m.source.Propose(ctx, ProposeRequest{
+		Changes:  changes,
+		Revision: rev,
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	return json.Marshal(&Proposal{
-		Status: "done",
-	})
+	return json.Marshal(propsal)
 }
 
-func (m *Service) update(ctx context.Context) error {
-	fs, err := m.source.Get(ctx)
+func (m *Service) updateCache(ctx context.Context) error {
+	fs, revision, err := m.source.Get(ctx)
 	if err != nil {
 		return err
 	}
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	var errs []error
-	for _, c := range m.collections {
-		if err := c.updateSnapshot(ctx, fs); err != nil {
+	for t, entry := range m.latest {
+		entry.revision = revision
+
+		c, err := entry.fn(ctx, fs)
+		if err != nil {
 			errs = append(errs, err)
+			continue
 		}
+
+		m.cache.Add(cacheKey{t, revision}, c)
 	}
 
 	return errors.Join(errs...)

@@ -224,10 +224,11 @@ func (f *FlagCollection) ListAll(_ context.Context) ([]*Flag, error) {
 	return f.flags, nil
 }
 
-func (f *FlagCollection) Put(_ context.Context, ns fidgit.Namespace, flag *Flag) ([]fidgit.File, error) {
-	flag.Namespace = string(ns)
+func (f *FlagCollection) Put(_ context.Context, req fidgit.RuntimePutRequest[Flag]) ([]fidgit.Change, error) {
+	flag := req.Item
+	flag.Namespace = string(req.Namespace)
 
-	doc, err := f.getDocument(ns)
+	doc, err := f.getDocument(req.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -249,17 +250,24 @@ func (f *FlagCollection) Put(_ context.Context, ns fidgit.Namespace, flag *Flag)
 		flags = append(flags, ef)
 	}
 
+	action := "update"
 	if !found {
+		action = "create"
 		flags = append(flags, flag.Flag)
 		slices.SortFunc(flags, func(i, j *ext.Flag) bool {
 			return i.Key < j.Key
 		})
 	}
 
-	return updateDocument(doc.Document, doc.path, flags)
+	return updateDocument(
+		fmt.Sprintf("feat: %s flag %s/%s", action, req.Namespace, req.Item.Key),
+		doc.Document,
+		doc.path,
+		flags,
+	)
 }
 
-func (f *FlagCollection) Delete(_ context.Context, ns fidgit.Namespace, id fidgit.ID) ([]fidgit.File, error) {
+func (f *FlagCollection) Delete(_ context.Context, ns fidgit.Namespace, id fidgit.ID) ([]fidgit.Change, error) {
 	doc, err := f.getDocument(ns)
 	if err != nil {
 		return nil, err
@@ -285,10 +293,15 @@ func (f *FlagCollection) Delete(_ context.Context, ns fidgit.Namespace, id fidgi
 		return nil, fmt.Errorf("flag %s/%s: not found", ns, id)
 	}
 
-	return updateDocument(doc.Document, doc.path, flags)
+	return updateDocument(
+		fmt.Sprintf("feat: deleting flag %s/%s", ns, id),
+		doc.Document,
+		doc.path,
+		flags,
+	)
 }
 
-func updateDocument(doc ext.Document, path string, flags []*ext.Flag) ([]fidgit.File, error) {
+func updateDocument(message string, doc ext.Document, path string, flags []*ext.Flag) ([]fidgit.Change, error) {
 	doc.Flags = flags
 
 	buf := &bytes.Buffer{}
@@ -296,8 +309,12 @@ func updateDocument(doc ext.Document, path string, flags []*ext.Flag) ([]fidgit.
 		return nil, err
 	}
 
-	return []fidgit.File{
-		{Path: path, Contents: buf.Bytes()},
+	return []fidgit.Change{
+		{
+			Message:  message,
+			Path:     path,
+			Contents: buf.Bytes(),
+		},
 	}, nil
 }
 

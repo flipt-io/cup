@@ -85,7 +85,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		data, err = s.service.Put(r.Context(), typ, Namespace(ns), body)
+		req := CollectionPutRequest{
+			Namespace: Namespace(ns),
+			Payload:   body,
+		}
+
+		if rev := r.URL.Query().Get("rev"); rev != "" {
+			req.Revision = &rev
+		}
+
+		data, err = s.service.Put(r.Context(), typ, req)
 		if err != nil {
 			logger.Error("Put", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

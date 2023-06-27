@@ -45,16 +45,21 @@ func WithReference(ref plumbing.ReferenceName) containers.Option[Options] {
 // from the provided git repository.
 // By default the returned FS serves the content from the root tree
 // for the commit at reference HEAD.
-func NewFromRepo(repo *git.Repository, opts ...containers.Option[Options]) (FS, error) {
+func NewFromRepo(repo *git.Repository, opts ...containers.Option[Options]) (FS, plumbing.Hash, error) {
 	o := Options{ref: plumbing.HEAD}
 	containers.ApplyAll(&o, opts...)
 
 	ref, err := repo.Reference(o.ref, true)
 	if err != nil {
-		return FS{}, fmt.Errorf("resolving reference (%q): %w", o.ref, err)
+		return FS{}, plumbing.ZeroHash, fmt.Errorf("resolving reference (%q): %w", o.ref, err)
 	}
 
-	return NewFromRepoHash(repo, ref.Hash())
+	fs, err := NewFromRepoHash(repo, ref.Hash())
+	if err != nil {
+		return FS{}, plumbing.ZeroHash, err
+	}
+
+	return fs, ref.Hash(), nil
 }
 
 // NewFromRepoHash is a convenience utility which constructs an instance of FS
