@@ -10,7 +10,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"go.flipt.io/fidgit"
-	"go.flipt.io/fidgit/collections/flipt"
+	"go.flipt.io/fidgit/internal/runtime"
 	"go.flipt.io/fidgit/internal/source/git"
 	"go.flipt.io/fidgit/internal/source/local"
 	"golang.org/x/exp/slog"
@@ -72,7 +72,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	manager.RegisterFactory(fidgit.FactoryFor[flipt.Flag](&flipt.FlagCollectionFactory{}))
+	factory, err := runtime.NewFactory(ctx, "flipt.wasm")
+	if err != nil {
+		slog.Error("Configuring Runtime", "error", err)
+		os.Exit(1)
+	}
+
+	manager.RegisterFactory(factory.Build())
 
 	manager.Start(context.Background())
 

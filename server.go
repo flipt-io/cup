@@ -2,6 +2,7 @@ package fidgit
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,17 +79,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case http.MethodPut:
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
+		req := ServicePutRequest{
+			Entry: &Entry{},
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(req.Entry); err != nil {
 			logger.Error("Put", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		req := CollectionPutRequest{
-			Namespace: Namespace(ns),
-			Payload:   body,
-		}
+		req.Entry.Namespace = Namespace(ns)
 
 		if rev := r.URL.Query().Get("rev"); rev != "" {
 			req.Revision = &rev
