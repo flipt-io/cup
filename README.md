@@ -1,17 +1,17 @@
-fidgit - GitOps Contribution Automation Tool
+cup - GitOps Contribution Automation Tool
 --------------------------------------------
 
-`fidgit` brings configuration repositories to life.
+`cup` brings configuration repositories to life.
 
 At its core it is a specification for cataloging and transforming the contents of Git repositories.
 
 ## Today
 
-Today `fidgit` can manage a single type of resource: Flipt Flags (not Segments).
+Today `cup` can manage a single type of resource: Flipt Flags (not Segments).
 
 ### Example
 
-#### Running `fidgit`
+#### Running `cup`
 
 1. Checkout the labs project
 2. `cd chatbot`
@@ -19,10 +19,10 @@ Today `fidgit` can manage a single type of resource: Flipt Flags (not Segments).
 4. Then run the following:
 
 ```sh
-go run cmd/fidgit/main.go -source git -repository http://flipt:password@localhost:3001/flipt/features.git
+go run cmd/cup/main.go -source git -repository http://flipt:password@localhost:3001/flipt/features.git
 ```
 
-From here, `fidgit` loads the one runtime it currently has configured: `flipt.io/Flag/v1alpha1`.
+From here, `cup` loads the one runtime it currently has configured: `flipt.io/Flag/v1alpha1`.
 
 This collection runtime is mounted on the server at `/api/v1/flipt.io/Flag/v1apha1/`
 
@@ -87,7 +87,7 @@ Simply use an off-the-shelf collection runtime for your favourite configuration 
 ## Collection Runtimes
 
 A collection runtime provides a materialized view over logical collections of resources in your repositories.
-`fidgit` can be configured to invoke implementations of its runtime WASM ABI to introspect types, list contents and make changes.
+`cup` can be configured to invoke implementations of its runtime WASM ABI to introspect types, list contents and make changes.
 It ships with a user iterface, which leverages the introspection capabilities to present a configurable search and editing experience in your browser.
 
 Any mutations made by the runtime are packaged into Git commits, pushed to a target upstream.

@@ -1,4 +1,4 @@
-module go.flipt.io/fidgit
+module go.flipt.io/cup
 
 go 1.20
 

@@ -12,7 +12,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
-	"go.flipt.io/fidgit"
+	"go.flipt.io/cup"
 	"golang.org/x/exp/slog"
 )
 
@@ -22,7 +22,7 @@ type Factory struct {
 	runtime wazero.Runtime
 
 	wasm []byte
-	typ  fidgit.Type
+	typ  cup.Type
 }
 
 func NewFactory(ctx context.Context, path string) (_ *Factory, err error) {
@@ -55,19 +55,19 @@ func NewFactory(ctx context.Context, path string) (_ *Factory, err error) {
 }
 
 type namespace struct {
-	entries []*fidgit.Entry
-	index   map[fidgit.ID]*fidgit.Entry
+	entries []*cup.Entry
+	index   map[cup.ID]*cup.Entry
 }
 
 type Collection struct {
 	*Factory
 	fs     fs.FS
 	logger *slog.Logger
-	index  map[fidgit.Namespace]*namespace
+	index  map[cup.Namespace]*namespace
 }
 
-func (f *Factory) Build() (fidgit.Type, fidgit.FactoryFunc) {
-	return f.typ, func(ctx context.Context, dir fs.FS) (fidgit.Collection, error) {
+func (f *Factory) Build() (cup.Type, cup.FactoryFunc) {
+	return f.typ, func(ctx context.Context, dir fs.FS) (cup.Collection, error) {
 		var (
 			buf = &bytes.Buffer{}
 			dec = json.NewDecoder(buf)
@@ -88,14 +88,14 @@ func (f *Factory) Build() (fidgit.Type, fidgit.FactoryFunc) {
 			collection = &Collection{
 				Factory: f,
 				fs:      dir,
-				index:   map[fidgit.Namespace]*namespace{},
+				index:   map[cup.Namespace]*namespace{},
 				logger:  f.logger,
 			}
 		)
 
 		var err error
 		for err == nil {
-			var entry fidgit.Entry
+			var entry cup.Entry
 			if err = dec.Decode(&entry); err != nil {
 				break
 			}
@@ -103,7 +103,7 @@ func (f *Factory) Build() (fidgit.Type, fidgit.FactoryFunc) {
 			contents, ok := collection.index[entry.Namespace]
 			if !ok {
 				contents = &namespace{
-					index: map[fidgit.ID]*fidgit.Entry{},
+					index: map[cup.ID]*cup.Entry{},
 				}
 				collection.index[entry.Namespace] = contents
 			}
@@ -120,7 +120,7 @@ func (f *Factory) Build() (fidgit.Type, fidgit.FactoryFunc) {
 	}
 }
 
-func (c *Collection) Get(ctx context.Context, n fidgit.Namespace, id fidgit.ID) (*fidgit.Entry, error) {
+func (c *Collection) Get(ctx context.Context, n cup.Namespace, id cup.ID) (*cup.Entry, error) {
 	c.logger.Debug("Get",
 		slog.String("namespace", string(n)),
 		slog.String("id", string(id)))
@@ -134,7 +134,7 @@ func (c *Collection) Get(ctx context.Context, n fidgit.Namespace, id fidgit.ID) 
 	return nil, fmt.Errorf("%s: item %s/%s: not found", c.typ, n, id)
 }
 
-func (c *Collection) List(ctx context.Context, n fidgit.Namespace) ([]*fidgit.Entry, error) {
+func (c *Collection) List(ctx context.Context, n cup.Namespace) ([]*cup.Entry, error) {
 	c.logger.Debug("List",
 		slog.String("namespace", string(n)))
 
@@ -145,7 +145,7 @@ func (c *Collection) List(ctx context.Context, n fidgit.Namespace) ([]*fidgit.En
 	return nil, fmt.Errorf("%s: namespace %s: not found", c.typ, n)
 }
 
-func (c *Collection) Put(ctx context.Context, entry *fidgit.Entry) ([]fidgit.Change, error) {
+func (c *Collection) Put(ctx context.Context, entry *cup.Entry) ([]cup.Change, error) {
 	in := &bytes.Buffer{}
 
 	if err := json.NewEncoder(in).Encode(entry); err != nil {
@@ -157,11 +157,11 @@ func (c *Collection) Put(ctx context.Context, entry *fidgit.Entry) ([]fidgit.Cha
 	})
 }
 
-func (c *Collection) Delete(ctx context.Context, n fidgit.Namespace, id fidgit.ID) ([]fidgit.Change, error) {
+func (c *Collection) Delete(ctx context.Context, n cup.Namespace, id cup.ID) ([]cup.Change, error) {
 	return c.mutate(ctx, []string{"delete", string(n), string(id)})
 }
 
-func (c *Collection) mutate(ctx context.Context, args []string, opts ...func(wazero.ModuleConfig) wazero.ModuleConfig) ([]fidgit.Change, error) {
+func (c *Collection) mutate(ctx context.Context, args []string, opts ...func(wazero.ModuleConfig) wazero.ModuleConfig) ([]cup.Change, error) {
 	var (
 		out = &bytes.Buffer{}
 		dec = json.NewDecoder(out)
@@ -175,11 +175,11 @@ func (c *Collection) mutate(ctx context.Context, args []string, opts ...func(waz
 	}
 
 	var (
-		changes []fidgit.Change
+		changes []cup.Change
 		err     error
 	)
 	for err == nil {
-		var change fidgit.Change
+		var change cup.Change
 		if err = dec.Decode(&change); err != nil {
 			break
 		}

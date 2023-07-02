@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"go.flipt.io/fidgit"
-	"go.flipt.io/fidgit/internal/runtime"
-	"go.flipt.io/fidgit/internal/source/git"
-	"go.flipt.io/fidgit/internal/source/local"
+	"go.flipt.io/cup"
+	"go.flipt.io/cup/internal/runtime"
+	"go.flipt.io/cup/internal/source/git"
+	"go.flipt.io/cup/internal/source/local"
 	"golang.org/x/exp/slog"
 )
 
@@ -33,7 +33,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var source fidgit.Source
+	var source cup.Source
 	switch *sourceType {
 	case "local":
 		source = local.New(ctx, ".")
@@ -66,7 +66,7 @@ func main() {
 
 	}
 
-	manager, err := fidgit.NewService(source)
+	manager, err := cup.NewService(source)
 	if err != nil {
 		slog.Error("Building Manager", "error", err)
 		os.Exit(1)
@@ -82,7 +82,7 @@ func main() {
 
 	manager.Start(context.Background())
 
-	server := fidgit.NewServer(manager)
+	server := cup.NewServer(manager)
 
 	http.Handle("/api/v1/", server)
 

@@ -9,9 +9,9 @@ import (
 	"os"
 
 	"github.com/gobwas/glob"
-	"go.flipt.io/fidgit"
-	"go.flipt.io/fidgit/internal/ext"
-	sdk "go.flipt.io/fidgit/sdk/go"
+	"go.flipt.io/cup"
+	"go.flipt.io/cup/internal/ext"
+	sdk "go.flipt.io/cup/sdk/go"
 	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 )
@@ -22,7 +22,7 @@ const (
 )
 
 func main() {
-	if err := sdk.New(fidgit.Type{
+	if err := sdk.New(cup.Type{
 		Group:   "flipt.io",
 		Kind:    "Flag",
 		Version: "v1",
@@ -61,7 +61,7 @@ func (r *runtime) ListAll(ctx context.Context, enc sdk.TypedEncoder[flag]) error
 	})
 }
 
-func (r *runtime) Put(ctx context.Context, flag *flag, enc sdk.TypedEncoder[fidgit.Change]) error {
+func (r *runtime) Put(ctx context.Context, flag *flag, enc sdk.TypedEncoder[cup.Change]) error {
 	return walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
 		if document.Namespace != string(flag.Namespace) {
 			return nil
@@ -99,7 +99,7 @@ func (r *runtime) Put(ctx context.Context, flag *flag, enc sdk.TypedEncoder[fidg
 			return err
 		}
 
-		return enc.Encode(fidgit.Change{
+		return enc.Encode(cup.Change{
 			Message:  fmt.Sprintf("feat: %s flag \"%s/%s\"", action, flag.Namespace, flag.ID),
 			Path:     path,
 			Contents: buf.Bytes(),
@@ -107,7 +107,7 @@ func (r *runtime) Put(ctx context.Context, flag *flag, enc sdk.TypedEncoder[fidg
 	})
 }
 
-func (r *runtime) Delete(ctx context.Context, namespace fidgit.Namespace, id fidgit.ID, enc sdk.TypedEncoder[fidgit.Change]) error {
+func (r *runtime) Delete(ctx context.Context, namespace cup.Namespace, id cup.ID, enc sdk.TypedEncoder[cup.Change]) error {
 	return walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
 		if document.Namespace != string(namespace) {
 			return nil
@@ -133,7 +133,7 @@ func (r *runtime) Delete(ctx context.Context, namespace fidgit.Namespace, id fid
 			return err
 		}
 
-		return enc.Encode(fidgit.Change{
+		return enc.Encode(cup.Change{
 			Message:  fmt.Sprintf("feat: delete flag \"%s/%s\"", namespace, id),
 			Path:     path,
 			Contents: buf.Bytes(),

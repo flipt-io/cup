@@ -1,4 +1,4 @@
-package fidgit
+package cup
 
 import (
 	"context"

@@ -20,13 +20,13 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/gofrs/uuid"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"go.flipt.io/fidgit"
-	"go.flipt.io/fidgit/internal/containers"
-	"go.flipt.io/fidgit/internal/gitfs"
+	"go.flipt.io/cup"
+	"go.flipt.io/cup/internal/containers"
+	"go.flipt.io/cup/internal/gitfs"
 	"golang.org/x/exp/slog"
 )
 
-var _ fidgit.Source = (*Source)(nil)
+var _ cup.Source = (*Source)(nil)
 
 // Source is an implementation of storage/fs.FSSource
 // This implementation is backed by a Git repository and it tracks an upstream reference.
@@ -241,7 +241,7 @@ func (s *Source) subscribe(ctx context.Context) {
 
 func ptr[T any](t T) *T { return &t }
 
-func (s *Source) Propose(ctx context.Context, r fidgit.ProposeRequest) (*fidgit.Proposal, error) {
+func (s *Source) Propose(ctx context.Context, r cup.ProposeRequest) (*cup.Proposal, error) {
 	// validate revision
 	if !plumbing.IsHash(r.Revision) {
 		return nil, fmt.Errorf("ref is not valid hash: %q", r.Revision)
@@ -274,11 +274,11 @@ func (s *Source) Propose(ctx context.Context, r fidgit.ProposeRequest) (*fidgit.
 		URLs: []string{s.url},
 	})
 
-	proposal := &fidgit.Proposal{
+	proposal := &cup.Proposal{
 		ID: ptr(uuid.Must(uuid.NewV4()).String()),
 	}
-	// create proposal branch (fidgit/proposal/$id)
-	branch := fmt.Sprintf("fidgit/proposal/%s", *proposal.ID)
+	// create proposal branch (cup/proposal/$id)
+	branch := fmt.Sprintf("cup/proposal/%s", *proposal.ID)
 	if err := repo.CreateBranch(&config.Branch{
 		Name:   branch,
 		Remote: "origin",

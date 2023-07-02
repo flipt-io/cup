@@ -7,15 +7,15 @@ import (
 	"io"
 	"os"
 
-	"go.flipt.io/fidgit"
+	"go.flipt.io/cup"
 )
 
 type CLI struct {
-	typ     fidgit.Type
+	typ     cup.Type
 	runtime Runtime
 }
 
-func New(typ fidgit.Type, runtime Runtime) CLI {
+func New(typ cup.Type, runtime Runtime) CLI {
 	return CLI{
 		typ:     typ,
 		runtime: runtime,
@@ -36,7 +36,7 @@ func (c CLI) Run(ctx context.Context, args ...string) error {
 			panic("delete [namespace] [id]")
 		}
 
-		return c.runtime.Delete(ctx, fidgit.Namespace(args[2]), fidgit.ID(args[3]), enc)
+		return c.runtime.Delete(ctx, cup.Namespace(args[2]), cup.ID(args[3]), enc)
 	default:
 		return fmt.Errorf("unexpected command: %q", args[1])
 	}
@@ -44,8 +44,8 @@ func (c CLI) Run(ctx context.Context, args ...string) error {
 
 type TypedRuntime[T any] interface {
 	ListAll(ctx context.Context, enc TypedEncoder[T]) error
-	Put(ctx context.Context, t *T, enc TypedEncoder[fidgit.Change]) error
-	Delete(ctx context.Context, namespace fidgit.Namespace, id fidgit.ID, enc TypedEncoder[fidgit.Change]) error
+	Put(ctx context.Context, t *T, enc TypedEncoder[cup.Change]) error
+	Delete(ctx context.Context, namespace cup.Namespace, id cup.ID, enc TypedEncoder[cup.Change]) error
 }
 
 type Encoder interface {
@@ -55,7 +55,7 @@ type Encoder interface {
 type Runtime interface {
 	ListAll(ctx context.Context, enc Encoder) error
 	Put(ctx context.Context, r io.Reader, enc Encoder) error
-	Delete(ctx context.Context, namespace fidgit.Namespace, id fidgit.ID, enc Encoder) error
+	Delete(ctx context.Context, namespace cup.Namespace, id cup.ID, enc Encoder) error
 }
 
 type TypedEncoder[T any] struct {
@@ -69,7 +69,7 @@ func (e TypedEncoder[T]) Encode(t T) error {
 type runtime struct {
 	listAll func(context.Context, Encoder) error
 	put     func(context.Context, io.Reader, Encoder) error
-	del     func(context.Context, fidgit.Namespace, fidgit.ID, Encoder) error
+	del     func(context.Context, cup.Namespace, cup.ID, Encoder) error
 }
 
 func Typed[T any](run TypedRuntime[T]) Runtime {
@@ -83,10 +83,10 @@ func Typed[T any](run TypedRuntime[T]) Runtime {
 				return nil
 			}
 
-			return run.Put(ctx, &t, TypedEncoder[fidgit.Change]{enc: enc})
+			return run.Put(ctx, &t, TypedEncoder[cup.Change]{enc: enc})
 		},
-		del: func(ctx context.Context, ns fidgit.Namespace, id fidgit.ID, enc Encoder) error {
-			return run.Delete(ctx, ns, id, TypedEncoder[fidgit.Change]{enc: enc})
+		del: func(ctx context.Context, ns cup.Namespace, id cup.ID, enc Encoder) error {
+			return run.Delete(ctx, ns, id, TypedEncoder[cup.Change]{enc: enc})
 		},
 	}
 }
@@ -99,6 +99,6 @@ func (r *runtime) Put(ctx context.Context, rd io.Reader, enc Encoder) error {
 	return r.put(ctx, rd, enc)
 }
 
-func (r *runtime) Delete(ctx context.Context, namespace fidgit.Namespace, id fidgit.ID, enc Encoder) error {
+func (r *runtime) Delete(ctx context.Context, namespace cup.Namespace, id cup.ID, enc Encoder) error {
 	return r.del(ctx, namespace, id, enc)
 }

@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.flipt.io/fidgit"
+	"go.flipt.io/cup"
 	"golang.org/x/exp/slog"
 )
 
-var _ fidgit.Source = (*Source)(nil)
+var _ cup.Source = (*Source)(nil)
 
 type Source struct {
 	path string
@@ -57,7 +57,7 @@ func (s *Source) Get(ctx context.Context) (fs.FS, string, error) {
 	}
 }
 
-func (s *Source) Propose(_ context.Context, req fidgit.ProposeRequest) (*fidgit.Proposal, error) {
+func (s *Source) Propose(_ context.Context, req cup.ProposeRequest) (*cup.Proposal, error) {
 	for _, change := range req.Changes {
 		slog.Debug("Handling Change", "path", change.Path, "message", change.Message)
 
@@ -77,5 +77,5 @@ func (s *Source) Propose(_ context.Context, req fidgit.ProposeRequest) (*fidgit.
 		}
 	}
 
-	return &fidgit.Proposal{Status: "done"}, nil
+	return &cup.Proposal{Status: "done"}, nil
 }
