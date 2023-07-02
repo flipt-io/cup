@@ -1,94 +1,101 @@
 cup - GitOps Contribution Automation Tool
---------------------------------------------
+-----------------------------------------
 
-`cup` brings configuration repositories to life.
+`cup` brings Git repositories to life.
 
-At its core it is a specification for cataloging and transforming the contents of Git repositories.
+Instantly expose the contents of your Git repositories via the `cup` API.
+Get, List, Update and Delete the logical resources represented within them.
+Let `cup` handle pushing contributions and opening pull-requests when using the mutation APIs.
 
-## Today
+Use common pre-built runtimes, referred to as `sourcers`, to expose common configuration formats by simply configuring `cup`.
+Alternatively, build your own `sourcers` in any language which compiles to WASM WASI preview1.
 
-Today `cup` can manage a single type of resource: Flipt Flags (not Segments).
+## Building
 
-### Example
+### Requirements
 
-#### Running `cup`
+- Go
 
-1. Checkout the labs project
-2. `cd chatbot`
-3. `docker-compose -f docker-compose.gitops.yml up`
-4. Then run the following:
+## Running
 
 ```sh
+# serve current working directory
+go run cmd/cup/main.go
+
+# serve an upstream repository
 go run cmd/cup/main.go -source git -repository http://flipt:password@localhost:3001/flipt/features.git
 ```
 
-From here, `cup` loads the one runtime it currently has configured: `flipt.io/Flag/v1alpha1`.
+## Sourcers
 
-This collection runtime is mounted on the server at `/api/v1/flipt.io/Flag/v1apha1/`
+`cup` requires `sourcers` to collect and transform the logical resources described within your Git repositories.
 
-#### Getting Flags
+A `sourcer` is a WASM binary compiled for a WASI execution environment (specifically `cup` uses Wazero).
+Each binary should conform to the same API. Currently, that consists of four sub-commands.
+
+The sub-commands should parse the local filesystem for state you want to expose.
+Each `sourcer` represents a single logical resource encoded in your repository.
+For example, Flipt's feature flags can be encoded in a repository via a YAML configuration format.
+
+Checkout the [Flipt Flag](./cmd/flipt/main.go) implementation for an example.
+This uses the [sdk/go](./sdk/go) package to simplify bootstrapping a `sourcer` implementation.
+It allows developers to focus on the business logic of finding resources and updating them.
+You simply need to implement the `sdk.TypedRuntime[T]` generic interface.
+
+### CLI Commands
+
+Each of the following should be handled as the first argument after the program name:
+
+- `type`
+
+Should return a JSON encoded object containing the group, kind and version of the `sourcer` instance.
 
 ```sh
-➜  curl --silent localhost:9191/api/v1/flipt.io/Flag/v1alpha1/default/chat-enabled | jq .
+➜  go run cmd/flipt/main.go type | jq
 {
-  "key": "chat-enabled",
-  "name": "Chat Enabled",
-  "description": "Enable chat for all users",
-  "enabled": true,
-  "variants": null,
-  "rules": null
+  "group": "flipt.io",
+  "kind": "Flag",
+  "version": "v1"
 }
 ```
 
-#### Listing Flags
+- `list`
+
+Should return a stream of JSON encoded resources on STDOUT (JSON-LD stream).
+The entire contents is expected to be listed when this is called.
+Each resource should expose a `namespace` and an `id`.
+Each `id` must be unique within each `namespace`.
 
 ```sh
-➜  curl --silent localhost:9191/api/v1/flipt.io/Flag/v1alpha1/default | jq .
-[
-  {
-    "key": "chat-enabled",
-    "name": "Chat Enabled",
-    "description": "Enable chat for all users",
-    "enabled": true,
-    "variants": null,
-    "rules": null
-  },
-  ...
-]
+➜  go run cmd/flipt/main.go list
+{"namespace":"default","id":"flag1","payload":{"name":"flag1","description":"description","enabled":true,"variants":[...],"rules":[...]}}
+{"namespace":"default","id":"foo","payload":{"name":"Foo","description":"","enabled":false,"variants":null,"rules":null}}
 ```
 
-#### Putting Flags
+- `put`
 
-> Currently, this only creates commits and pushes the branch, it doesn't open the PR. That is to come.
+Takes a single JSON encoded resource in STDIN to be created or updated (upsert).
+The implementation should locate all files which relate to the resource and re-render them appropriately.
+Each files new contents must be streamed back out as a JSON encoded object with the path, contents and a message describing the change.
 
-```sh
-➜  curl --silent -H 'Content-Type: application/json' -X PUT localhost:9191/api/v1/flipt.io/Flag/v1alpha1/default --data "{\"key\":\"foo\",\"name\":\"Foo\"}" | jq .
+```
+➜  go run cmd/flipt/main.go put <<EOF | jq -r
+{"namespace":"default","id":"foo","payload":{"name":"Foo","enabled":true}}
+EOF
 {
-  "status": "",
-  "id": "179c1c92-cb81-4f30-a1bd-b5c86d8928da"
+  "path": "features.yml",
+  "message": "feat: update flag \"default/foo\"",
+  "contents": "bmFtZXNwYWNlOi..."
 }
 ```
 
-#### Deleting Flags
+- `delete`
+
+Takes a namespace and id for a particular resource as command-line arguments.
+The implementation should locate all files related and remove the related resource data.
+Once again, the new contents of each file should be streamed as JSON encoded objects with the path, new contents and message describing the change.
 
 ```sh
-➜  curl --silent -H 'Content-Type: application/json' -X DELETE localhost:9191/api/v1/flipt.io/Flag/v1alpha1/default/chat-enabled | jq .
-{
-  "status": "",
-  "id": "e7ad4fc9-aa1f-42b4-a129-71c2bc67cfc4"
-}
+➜  go run cmd/flipt/main.go delete default foo
+{"path":"features.yml","message":"feat: delete flag \"default/foo\"","contents":"bmFtZXNw..."}
 ```
-
-## Goals
-
-It will combine Git and WASM to create a ClickOps experience for your GitOps workflows.
-Simply use an off-the-shelf collection runtime for your favourite configuration format, or build your own in the language of your choice.
-
-## Collection Runtimes
-
-A collection runtime provides a materialized view over logical collections of resources in your repositories.
-`cup` can be configured to invoke implementations of its runtime WASM ABI to introspect types, list contents and make changes.
-It ships with a user iterface, which leverages the introspection capabilities to present a configurable search and editing experience in your browser.
-
-Any mutations made by the runtime are packaged into Git commits, pushed to a target upstream.
-When SCM (GitHub, Gitlab etc.) access is configured, pull or merge requests can be automatically opened based on these proposed changes.

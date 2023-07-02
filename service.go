@@ -23,9 +23,9 @@ type ProposeRequest struct {
 }
 
 type Change struct {
-	Path     string
-	Message  string
-	Contents []byte
+	Path     string `json:"path"`
+	Message  string `json:"message"`
+	Contents []byte `json:"contents"`
 }
 
 type Proposal struct {
