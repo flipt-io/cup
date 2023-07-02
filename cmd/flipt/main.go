@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 
@@ -60,7 +61,7 @@ func main() {
 			panic(err)
 		}
 
-		enc := json.NewEncoder(os.Stdout)
+		enc := newDocumentEncoder(os.Stdout)
 		if err := walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
 			if document.Namespace != string(flag.Namespace) {
 				return nil
@@ -80,7 +81,9 @@ func main() {
 				f.Rules = flag.Payload.Rules
 			}
 
+			action := "update"
 			if !found {
+				action = "create"
 				document.Flags = append(document.Flags, &ext.Flag{
 					Key:         flag.ID,
 					Name:        flag.Payload.Name,
@@ -91,31 +94,77 @@ func main() {
 				})
 			}
 
-			buf := &bytes.Buffer{}
-			if err := yaml.NewEncoder(buf).Encode(document); err != nil {
-				return err
-			}
-
-			if err := enc.Encode(fidgit.Change{
-				Path:     path,
-				Contents: buf.Bytes(),
-			}); err != nil {
-				return err
-			}
-
-			return nil
+			return enc.encode(
+				fmt.Sprintf("feat: %s flag \"%s/%s\"", action, flag.Namespace, flag.ID),
+				path,
+				document,
+			)
 		}); err != nil {
 			panic(err)
 		}
 	case "delete":
+		if len(os.Args) < 4 {
+			panic("delete [namespace] [id]")
+		}
+
+		var (
+			namespace = os.Args[2]
+			id        = os.Args[3]
+		)
+
+		enc := newDocumentEncoder(os.Stdout)
+		if err := walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
+			if document.Namespace != string(namespace) {
+				return nil
+			}
+
+			var found bool
+			for i, f := range document.Flags {
+				if f.Key != string(id) {
+					continue
+				}
+
+				document.Flags = append(document.Flags[:i], document.Flags[i+1:]...)
+
+				found = true
+			}
+
+			if !found {
+				return nil
+			}
+
+			return enc.encode(
+				fmt.Sprintf("feat: delete flag \"%s/%s\"", namespace, id),
+				path,
+				document,
+			)
+		}); err != nil {
+			panic(err)
+		}
 	default:
 		panic(fmt.Errorf("unexpected command: %q", os.Args[1]))
 	}
 }
 
-type document struct {
-	ext.Document
-	path string
+type encoder struct {
+	Encoder *json.Encoder
+}
+
+func newDocumentEncoder(w io.Writer) encoder {
+	return encoder{json.NewEncoder(w)}
+}
+
+func (e encoder) encode(message, path string, doc *ext.Document) error {
+	buf := &bytes.Buffer{}
+	if err := yaml.NewEncoder(buf).Encode(doc); err != nil {
+		return err
+	}
+
+	return e.Encoder.Encode(fidgit.Change{
+		Message:  message,
+		Path:     path,
+		Contents: buf.Bytes(),
+	})
 }
 
 type flag struct {
