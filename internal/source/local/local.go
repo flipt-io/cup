@@ -59,14 +59,12 @@ func (s *Source) Get(ctx context.Context) (fs.FS, string, error) {
 
 func (s *Source) Propose(_ context.Context, req fidgit.ProposeRequest) (*fidgit.Proposal, error) {
 	for _, change := range req.Changes {
-		slog.Debug("Handling Change", "path", change.Path)
+		slog.Debug("Handling Change", "path", change.Path, "message", change.Message)
 
 		rel, err := filepath.Rel(s.path, change.Path)
 		if err != nil {
 			return nil, fmt.Errorf("local: proposing change: %w", err)
 		}
-
-		slog.Debug("Relative Path", "path", rel)
 
 		if dir, _ := filepath.Split(rel); dir != "" {
 			if err := os.MkdirAll(dir, 0755); err != nil {

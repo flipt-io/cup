@@ -2,16 +2,16 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 
 	"github.com/gobwas/glob"
 	"go.flipt.io/fidgit"
 	"go.flipt.io/fidgit/internal/ext"
+	sdk "go.flipt.io/fidgit/sdk/go"
 	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 )
@@ -22,148 +22,122 @@ const (
 )
 
 func main() {
-	switch os.Args[1] {
-	case "type":
-		if err := json.NewEncoder(os.Stdout).Encode(
-			fidgit.Type{
-				Group:   "flipt.io",
-				Kind:    "Flag",
-				Version: "v1",
-			},
-		); err != nil {
-			panic(err)
+	if err := sdk.New(fidgit.Type{
+		Group:   "flipt.io",
+		Kind:    "Flag",
+		Version: "v1",
+	}, sdk.Typed[flag](&runtime{})).
+		Run(context.Background(), os.Args...); err != nil {
+		panic(err)
+	}
+}
+
+type runtime struct{}
+
+func (r *runtime) ListAll(ctx context.Context, enc sdk.TypedEncoder[flag]) error {
+	defer func() {
+		if err := recover(); err != nil {
+			panic(fmt.Errorf("ListAll: %v", err))
 		}
-	case "list":
-		enc := json.NewEncoder(os.Stdout)
-		if err := walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
-			for _, f := range document.Flags {
-				if err := enc.Encode(flag{
-					Namespace: document.Namespace,
-					ID:        f.Key,
-					Payload: payload{
-						Name:        f.Name,
-						Description: f.Description,
-						Enabled:     f.Enabled,
-						Variants:    f.Variants,
-						Rules:       f.Rules,
-					},
-				}); err != nil {
-					return err
-				}
+	}()
+
+	return walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
+		for _, f := range document.Flags {
+			if err := enc.Encode(flag{
+				Namespace: document.Namespace,
+				ID:        f.Key,
+				Payload: payload{
+					Name:        f.Name,
+					Description: f.Description,
+					Enabled:     f.Enabled,
+					Variants:    f.Variants,
+					Rules:       f.Rules,
+				},
+			}); err != nil {
+				return err
 			}
+		}
+		return nil
+	})
+}
+
+func (r *runtime) Put(ctx context.Context, flag *flag, enc sdk.TypedEncoder[fidgit.Change]) error {
+	return walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
+		if document.Namespace != string(flag.Namespace) {
 			return nil
-		}); err != nil {
-			panic(err)
-		}
-	case "put":
-		var flag flag
-		if err := json.NewDecoder(os.Stdin).Decode(&flag); err != nil {
-			panic(err)
 		}
 
-		enc := newDocumentEncoder(os.Stdout)
-		if err := walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
-			if document.Namespace != string(flag.Namespace) {
-				return nil
+		var found bool
+		for _, f := range document.Flags {
+			if f.Key != string(flag.ID) {
+				continue
 			}
 
-			var found bool
-			for _, f := range document.Flags {
-				if f.Key != string(flag.ID) {
-					continue
-				}
+			found = true
 
-				found = true
-
-				f.Description = flag.Payload.Description
-				f.Enabled = flag.Payload.Enabled
-				f.Variants = flag.Payload.Variants
-				f.Rules = flag.Payload.Rules
-			}
-
-			action := "update"
-			if !found {
-				action = "create"
-				document.Flags = append(document.Flags, &ext.Flag{
-					Key:         flag.ID,
-					Name:        flag.Payload.Name,
-					Description: flag.Payload.Description,
-					Enabled:     flag.Payload.Enabled,
-					Variants:    flag.Payload.Variants,
-					Rules:       flag.Payload.Rules,
-				})
-			}
-
-			return enc.encode(
-				fmt.Sprintf("feat: %s flag \"%s/%s\"", action, flag.Namespace, flag.ID),
-				path,
-				document,
-			)
-		}); err != nil {
-			panic(err)
-		}
-	case "delete":
-		if len(os.Args) < 4 {
-			panic("delete [namespace] [id]")
+			f.Description = flag.Payload.Description
+			f.Enabled = flag.Payload.Enabled
+			f.Variants = flag.Payload.Variants
+			f.Rules = flag.Payload.Rules
 		}
 
-		var (
-			namespace = os.Args[2]
-			id        = os.Args[3]
-		)
-
-		enc := newDocumentEncoder(os.Stdout)
-		if err := walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
-			if document.Namespace != string(namespace) {
-				return nil
-			}
-
-			var found bool
-			for i, f := range document.Flags {
-				if f.Key != string(id) {
-					continue
-				}
-
-				document.Flags = append(document.Flags[:i], document.Flags[i+1:]...)
-
-				found = true
-			}
-
-			if !found {
-				return nil
-			}
-
-			return enc.encode(
-				fmt.Sprintf("feat: delete flag \"%s/%s\"", namespace, id),
-				path,
-				document,
-			)
-		}); err != nil {
-			panic(err)
+		action := "update"
+		if !found {
+			action = "create"
+			document.Flags = append(document.Flags, &ext.Flag{
+				Key:         flag.ID,
+				Name:        flag.Payload.Name,
+				Description: flag.Payload.Description,
+				Enabled:     flag.Payload.Enabled,
+				Variants:    flag.Payload.Variants,
+				Rules:       flag.Payload.Rules,
+			})
 		}
-	default:
-		panic(fmt.Errorf("unexpected command: %q", os.Args[1]))
-	}
+
+		buf := &bytes.Buffer{}
+		if err := yaml.NewEncoder(buf).Encode(document); err != nil {
+			return err
+		}
+
+		return enc.Encode(fidgit.Change{
+			Message:  fmt.Sprintf("feat: %s flag \"%s/%s\"", action, flag.Namespace, flag.ID),
+			Path:     path,
+			Contents: buf.Bytes(),
+		})
+	})
 }
 
-type encoder struct {
-	Encoder *json.Encoder
-}
+func (r *runtime) Delete(ctx context.Context, namespace fidgit.Namespace, id fidgit.ID, enc sdk.TypedEncoder[fidgit.Change]) error {
+	return walkDocuments(os.DirFS("."), func(path string, document *ext.Document) error {
+		if document.Namespace != string(namespace) {
+			return nil
+		}
 
-func newDocumentEncoder(w io.Writer) encoder {
-	return encoder{json.NewEncoder(w)}
-}
+		var found bool
+		for i, f := range document.Flags {
+			if f.Key != string(id) {
+				continue
+			}
 
-func (e encoder) encode(message, path string, doc *ext.Document) error {
-	buf := &bytes.Buffer{}
-	if err := yaml.NewEncoder(buf).Encode(doc); err != nil {
-		return err
-	}
+			document.Flags = append(document.Flags[:i], document.Flags[i+1:]...)
 
-	return e.Encoder.Encode(fidgit.Change{
-		Message:  message,
-		Path:     path,
-		Contents: buf.Bytes(),
+			found = true
+		}
+
+		if !found {
+			return nil
+		}
+
+		buf := &bytes.Buffer{}
+		if err := yaml.NewEncoder(buf).Encode(document); err != nil {
+			return err
+		}
+
+		return enc.Encode(fidgit.Change{
+			Message:  fmt.Sprintf("feat: delete flag \"%s/%s\"", namespace, id),
+			Path:     path,
+			Contents: buf.Bytes(),
+		})
 	})
 }
 
