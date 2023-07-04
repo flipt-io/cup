@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-billy/v5/memfs"
+	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -22,7 +23,6 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"go.flipt.io/cup"
 	"go.flipt.io/cup/internal/containers"
-	"go.flipt.io/cup/internal/gitfs"
 	"golang.org/x/exp/slog"
 )
 
@@ -176,11 +176,28 @@ func (s *Source) build(hash plumbing.Hash) (_ *revisionFS, err error) {
 		return &revisionFS{fs: fs, revision: hash.String()}, nil
 	}
 
-	fs, err := gitfs.NewFromRepoHash(s.repo, hash)
+	dir, err := os.MkdirTemp("", "cup-*")
 	if err != nil {
 		return nil, err
 	}
 
+	repo, err := git.Open(s.shallowCopyStorage(), osfs.New(dir))
+	if err != nil {
+		return nil, err
+	}
+
+	work, err := repo.Worktree()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := work.Checkout(&git.CheckoutOptions{
+		Hash: hash,
+	}); err != nil {
+		return nil, err
+	}
+
+	fs := os.DirFS(dir)
 	// add fs for hash to cache
 	s.cache.Add(hash, fs)
 
@@ -239,6 +256,17 @@ func (s *Source) subscribe(ctx context.Context) {
 	}
 }
 
+func (s *Source) shallowCopyStorage() *memory.Storage {
+	// shallow copy the store without the existing index
+	return &memory.Storage{
+		ReferenceStorage: s.storage.ReferenceStorage,
+		ConfigStorage:    s.storage.ConfigStorage,
+		ShallowStorage:   s.storage.ShallowStorage,
+		ObjectStorage:    s.storage.ObjectStorage,
+		ModuleStorage:    s.storage.ModuleStorage,
+	}
+}
+
 func ptr[T any](t T) *T { return &t }
 
 func (s *Source) Propose(ctx context.Context, r cup.ProposeRequest) (*cup.Proposal, error) {
@@ -250,13 +278,7 @@ func (s *Source) Propose(ctx context.Context, r cup.ProposeRequest) (*cup.Propos
 	hash := plumbing.NewHash(r.Revision)
 
 	// shallow copy the store without the existing index
-	store := &memory.Storage{
-		ReferenceStorage: s.storage.ReferenceStorage,
-		ConfigStorage:    s.storage.ConfigStorage,
-		ShallowStorage:   s.storage.ShallowStorage,
-		ObjectStorage:    s.storage.ObjectStorage,
-		ModuleStorage:    s.storage.ModuleStorage,
-	}
+	store := s.shallowCopyStorage()
 
 	// open repository on store with in-memory workspace
 	repo, err := git.Open(store, memfs.New())

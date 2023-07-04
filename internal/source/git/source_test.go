@@ -16,15 +16,11 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.flipt.io/flipt/internal/containers"
+	"go.flipt.io/cup/internal/containers"
 	"go.uber.org/zap/zaptest"
 )
 
 var gitRepoURL = os.Getenv("TEST_GIT_REPO_URL")
-
-func Test_SourceString(t *testing.T) {
-	require.Equal(t, "git", (&Source{}).String())
-}
 
 func Test_SourceGet(t *testing.T) {
 	source, skip := testSource(t)
