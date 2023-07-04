@@ -45,3 +45,5 @@ require (
 	golang.org/x/tools v0.9.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+replace github.com/tetratelabs/wazero => github.com/georgemac/wazero v0.0.0-20230704152646-7d0df66746ee
