@@ -29,8 +29,9 @@ type Change struct {
 }
 
 type Proposal struct {
-	Status string  `json:"status"`
-	ID     *string `json:"id,omitempty"`
+	Status   string            `json:"status"`
+	ID       *string           `json:"id,omitempty"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 type entry struct {

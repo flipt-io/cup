@@ -163,8 +163,6 @@ func walkDocuments(source fs.FS, fn func(path string, document *ext.Document) er
 		return err
 	}
 
-	slog.Debug("Opening state files", "paths", paths)
-
 	for _, p := range paths {
 		fi, err := source.Open(p)
 		if err != nil {
