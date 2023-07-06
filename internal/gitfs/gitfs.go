@@ -132,27 +132,22 @@ func (f FS) Open(name string) (_ fs.File, err error) {
 			return nil, err
 		}
 
-		var entries []fs.DirEntry
+		var entries []FileInfo
 		for _, entry := range tree.Entries {
-			entry := entry
-			mode, err := entry.Mode.ToOSFileMode()
+			info, err := fileInfoFromEntry(&entry)
 			if err != nil {
 				return nil, err
 			}
 
-			dEntry := DirEntry{
-				entry: entry,
-				mode:  mode,
-			}
-
 			if entry.Mode != filemode.Dir {
-				dEntry.fi, err = f.tree.TreeEntryFile(&entry)
+				fi, err := f.tree.TreeEntryFile(&entry)
 				if err != nil {
 					return nil, err
 				}
+				info.size = fi.Size
 			}
 
-			entries = append(entries, dEntry)
+			entries = append(entries, info)
 		}
 
 		return &Dir{info: info, entries: entries}, nil
@@ -215,7 +210,7 @@ func (f *File) Stat() (fs.FileInfo, error) {
 // It is an implementation of fs.File.
 type Dir struct {
 	info    fs.FileInfo
-	entries []fs.DirEntry
+	entries []FileInfo
 	idx     int
 }
 
@@ -247,6 +242,34 @@ func (d *Dir) Close() error {
 // If it encounters an error before the end of the directory,
 // ReadDir returns the DirEntry list read until that point and a non-nil error.
 func (d *Dir) ReadDir(n int) (dst []fs.DirEntry, err error) {
+	infos, err := d.readDir(n)
+	if err != nil {
+		return nil, err
+	}
+
+	dst = make([]fs.DirEntry, 0, len(infos))
+	for _, i := range infos {
+		dst = append(dst, i)
+	}
+
+	return
+}
+
+func (d *Dir) Readdir(n int) (dst []fs.FileInfo, err error) {
+	infos, err := d.readDir(n)
+	if err != nil {
+		return nil, err
+	}
+
+	dst = make([]fs.FileInfo, 0, len(infos))
+	for _, i := range infos {
+		dst = append(dst, i)
+	}
+
+	return
+}
+
+func (d *Dir) readDir(n int) (dst []FileInfo, err error) {
 	if n <= 0 {
 		return d.entries, nil
 	}
@@ -274,6 +297,7 @@ type FileInfo struct {
 	size int64
 	mode fs.FileMode
 	mod  time.Time
+	sys  any
 }
 
 func fileInfoFromEntry(entry *object.TreeEntry) (FileInfo, error) {
@@ -308,51 +332,10 @@ func (f FileInfo) IsDir() bool {
 	return f.mode.IsDir()
 }
 
-func (f FileInfo) Sys() any {
-	return nil
+func (f FileInfo) Type() fs.FileMode {
+	return f.mode
 }
 
-// DirEntry represents an entry within a file system directory.
-// The entry could itself be a directory or another type of file.
-type DirEntry struct {
-	entry object.TreeEntry
-	fi    *object.File
-	mode  fs.FileMode
-}
-
-// Name returns the name of the file (or subdirectory) described by the entry.
-// This name is only the final element of the path (the base name), not the entire path.
-// For example, Name would return "hello.go" not "home/gopher/hello.go".
-func (d DirEntry) Name() string {
-	return d.entry.Name
-}
-
-// IsDir reports whether the entry describes a directory.
-func (d DirEntry) IsDir() bool {
-	return d.entry.Mode == filemode.Dir
-}
-
-// Type returns the type bits for the entry.
-// The type bits are a subset of the usual FileMode bits, those returned by the FileMode.Type method.
-func (d DirEntry) Type() fs.FileMode {
-	return d.mode
-}
-
-// Info returns the FileInfo for the file or subdirectory described by the entry.
-// The returned FileInfo may be from the time of the original directory read
-// or from the time of the call to Info. If the file has been removed or renamed
-// since the directory read, Info may return an error satisfying errors.Is(err, ErrNotExist).
-// If the entry denotes a symbolic link, Info reports the information about the link itself,
-// not the link's target.
-func (d DirEntry) Info() (fs.FileInfo, error) {
-	info := FileInfo{
-		name: d.entry.Name,
-		mode: d.mode,
-	}
-
-	if d.entry.Mode != filemode.Dir && d.fi != nil {
-		info.size = d.fi.Blob.Size
-	}
-
-	return info, nil
+func (f FileInfo) Info() (fs.FileInfo, error) {
+	return f, nil
 }

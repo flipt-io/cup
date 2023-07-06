@@ -10,7 +10,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/hashicorp/golang-lru/v2 v2.0.4
 	github.com/stretchr/testify v1.8.4
-	github.com/tetratelabs/wazero v1.2.1
+	github.com/tetratelabs/wazero v1.2.2-0.20230706081924-2c21f3aa8f87
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	gopkg.in/yaml.v3 v3.0.1
@@ -45,5 +45,3 @@ require (
 	golang.org/x/tools v0.9.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
-
-replace github.com/tetratelabs/wazero => github.com/georgemac/wazero v0.0.0-20230704152646-7d0df66746ee

@@ -74,7 +74,7 @@ func (f *Factory) Build() (cup.Type, cup.FactoryFunc) {
 		)
 
 		if err := f.invoke(ctx, buf, []string{"list"}, func(mc wazero.ModuleConfig) wazero.ModuleConfig {
-			return mc.WithFS(dir)
+			return mc.WithFSConfig(wazero.NewFSConfig().WithFSMount(dir, "/"))
 		}); err != nil {
 			return nil, err
 		}
@@ -169,7 +169,7 @@ func (c *Collection) mutate(ctx context.Context, args []string, opts ...func(waz
 
 	if err := c.invoke(ctx, out, args, append(opts, func(mc wazero.ModuleConfig) wazero.ModuleConfig {
 		return mc.
-			WithFS(c.fs)
+			WithFSConfig(wazero.NewFSConfig().WithFSMount(c.fs, "/"))
 	})...); err != nil {
 		return nil, err
 	}
