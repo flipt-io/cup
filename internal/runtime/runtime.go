@@ -32,16 +32,16 @@ func NewFactory(ctx context.Context, path string) (_ *Factory, err error) {
 
 	factory.wasm, err = os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("opening file: %w", err)
 	}
 
 	buf := &bytes.Buffer{}
 	if err := factory.invoke(ctx, buf, []string{"type"}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting type: %w", err)
 	}
 
 	if err := json.NewDecoder(buf).Decode(&factory.typ); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding type: %w", err)
 	}
 
 	factory.logger = slog.With(
