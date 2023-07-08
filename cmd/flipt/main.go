@@ -100,7 +100,7 @@ func (r *runtime) Put(ctx context.Context, flag *flag, enc sdk.TypedEncoder[cup.
 		}
 
 		return enc.Encode(cup.Change{
-			Message:  fmt.Sprintf("feat: %s flag \"%s/%s\"", action, flag.Namespace, flag.ID),
+			Message:  fmt.Sprintf("feat: %s flag `%s/%s`", action, flag.Namespace, flag.ID),
 			Path:     path,
 			Contents: buf.Bytes(),
 		})
@@ -134,7 +134,7 @@ func (r *runtime) Delete(ctx context.Context, namespace cup.Namespace, id cup.ID
 		}
 
 		return enc.Encode(cup.Change{
-			Message:  fmt.Sprintf("feat: delete flag \"%s/%s\"", namespace, id),
+			Message:  fmt.Sprintf("feat: delete flag `%s/%s`", namespace, id),
 			Path:     path,
 			Contents: buf.Bytes(),
 		})
