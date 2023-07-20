@@ -129,6 +129,15 @@ The schema provided is defined using JSONSchema syntax and pertains to what can 
 
 Schemas can be defined per version of the group and kind.
 
+The core specification includes a section which defines where and how to source the Controllers implementation.
+Currently, this `controller` field has a single field `path`.
+This is a relative or absolute path to a target WASM/WASIP1 binary implementation of a Controller.
+
+> Depending on how the resource definition is sourced effects the meaning of the relative path.
+> If the definition is inline within the server configuration, then it is relative to the server processes current working directory.
+> If the definition itself is sourced from a path on disk, then the path will be relative to the same directory as the resource definition.
+> In a potential future where `cup` controller are packaed into OCI images, this path would be relative to inside the OCI artefact itself.
+
 **Example Resource Definition Payload**
 
 ```json
@@ -145,6 +154,9 @@ Schemas can be defined per version of the group and kind.
   },
   "spec": {
     "group": "flipt.io",
+    "controller": {
+      "path": "flipt.wasm",
+    },
     "versions": {
       "v1": {
         "schema": {
