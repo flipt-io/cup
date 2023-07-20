@@ -309,6 +309,34 @@ TBD:
 | success   | 0         | TBD                  |
 | error     | 1         | JSON encoded message |
 
+#### Flow
+
+This diagram gives an overview of the flow of a successsful `PUT` request:
+
+```mermaid
+sequenceDiagram
+    participant A as Actor
+    participant S as API Server
+    participant E as Executor
+    participant F as Worktree
+    participant R as Runtime
+    participant G as Git
+    participant SCM
+    A ->> S: PUT /apis/g/v/k
+    S ->>+ E: Put(Resource{})
+    E ->>+ G: checkout()
+    G ->>- F: tree
+    E ->>+ R: exec wasm put { ... }
+    R ->> F: write()
+    R ->>- E: exit 0
+    E ->> F: git add
+    E ->> G: commit and push
+    E ->>+ SCM: OpenPR()
+    SCM ->>- E: PR{}
+    E ->>- S: Status{}
+    S ->> A: 202 Accepted
+```
+
 ### delete
 
 Removing an existing resource.
