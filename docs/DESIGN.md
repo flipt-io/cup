@@ -38,7 +38,7 @@ The goal is to provide users with a way to manage the logical resources represen
 │     │            │  flipt.io/Flag/v1            │         │  ┌─────────────────────┐         │
 │     ├────────────▶                              │         │  │Git Repository       │         │
 │     │            │ ┌──────────────────────────┐ │         │  │                     │         │
-│     │            │ │Runtime                   │ │  ┌──────┼─▶│                     │         │
+│     │            │ │Controller                │ │  ┌──────┼─▶│                     │         │
 │     │            │ │                          │ │  │      │  │                     │         │
 │     │            │ │ exec type                │ │  │      │  │                     │         │
 │     │            │ │ exec get ...             │ │  │      │  └─────────────────────┘         │
@@ -204,11 +204,11 @@ Likelihood is we explore something close to the RBAC mechanisms available in the
 
 ## Executor
 
-Executors sit at the heart of `cup`. A single executor handles processing requests for a single resource type via it's associated runtime.
+Executors sit at the heart of `cup`. A single executor handles processing requests for a single resource type via it's associated controller.
 
-An executor has a general behaviour over any given `Runtime` implementation.
-`Runtime` implementations are exposed through a process command-line interface.
-Each runtime binary is compiled to WASM, available on the local filesystem. 
+An executor has a general behaviour over any given `Controller` implementation.
+`Controller` implementations are exposed through a process command-line interface.
+Each controller binary is compiled to WASM, available on the local filesystem.
 
 The executor will take care of adapting each request into an appropriate set of command line arguments and/or STDIN written payloads.
 It then interprets any exist codes and output written to the standard output streams (STDOUT / STDERR).
@@ -221,21 +221,21 @@ This will be mounted as the root filesystem for the WASM runtime.
 Given a mutating operation is request (`put` or `delete`) then the executor will support writes on the filesystem.
 The executor will intercept these writes and ultimately compose them into a pull request containing the changes made.
 
-## Runtimes
+## Controllers
 
 ### get
 
 Retrieving an instance of a resource by `namespace` and `name`.
 
 ```
-exec wasm ["get", "<namespace>", "<name>"]                      
-        ┌──────────────────────┐                                
-        │                      │        {                       
-        │     WASM Binary      │            "apiVersion": "..." 
-        │                      │            "kind": "...",      
-        │                      │            ...                 
-        │                      ├──────▶ }                       
-        └──────────────────────┘                                
+exec wasm ["get", "<namespace>", "<name>"]                     
+        ┌──────────────────────┐                               
+        │                      │        {                      
+        │     WASM Binary      │            "apiVersion": "..."
+        │                      │            "kind": "...",     
+        │                      │            ...                
+        │                      ├──────▶ }                      
+        └──────────────────────┘                               
 ```
 
 The purpose of this subcommand is to address an instance by namespace and name.
@@ -258,18 +258,18 @@ The filesystem will contain the configured target Git repositories HEAD tree for
 Listing and filtering a set of resource instances by `namespace` and optional `labels`
 
 ```
-exec wasm ["list", "<namespace>", ...(k/v pairs)]                   
-        ┌──────────────────────┐                                    
-        │                      │        [{                          
-        │     WASM Binary      │            "apiVersion": "..."     
-        │                      │            "kind": "...",          
-        │                      │            ...                     
-        │                      ├──────▶ }, ...]                     
-        └──────────────────────┘                                    
+exec wasm ["list", "<namespace>", ...(k/v pairs)]                  
+        ┌──────────────────────┐                                   
+        │                      │        [{                         
+        │     WASM Binary      │            "apiVersion": "..."    
+        │                      │            "kind": "...",         
+        │                      │            ...                    
+        │                      ├──────▶ }, ...]                    
+        └──────────────────────┘                                   
 ```
 
-The purpose of this subcommand is to return a list of instances found by the target runtime.
-The runtime should handle filtering by namespace and optionall by a list of `key=value` pairs of labels.
+The purpose of this subcommand is to return a list of instances found by the target controller.
+The controller should handle filtering by namespace and optionall by a list of `key=value` pairs of labels.
 
 #### Output
 
@@ -284,18 +284,18 @@ The runtime should handle filtering by namespace and optionall by a list of `key
 Creating or updating an existing resource.
 
 ```
-exec wasm ["put"]                               
-                              ┌──────────────────────┐                
-{                             │                      │                
-    "apiVersion": "..."       │     WASM Binary      │                
-    "kind": "...",            │                      │                
-    ...                       │                      │                
-}                       ──────▶                      ├──────▶ { TBD } 
-                              └──────────────────────┘                
+exec wasm ["put"]                              
+                              ┌──────────────────────┐               
+{                             │                      │               
+    "apiVersion": "..."       │     WASM Binary      │               
+    "kind": "...",            │                      │               
+    ...                       │                      │               
+}                       ──────▶                      ├──────▶ { TBD }
+                              └──────────────────────┘               
 ```
 
 The purpose of this subcommand is to create a new or update (upsert) an existing resource.
-Implementations should adjust the filesystem appropriately for the resource type and runtimes needs.
+Implementations should adjust the filesystem appropriately for the resource type and controllers needs.
 The new resource payload is serialized on STDIN.
 
 TBD:
@@ -319,7 +319,7 @@ sequenceDiagram
     participant S as API Server
     participant E as Executor
     participant F as Worktree
-    participant R as Runtime
+    participant R as Controller
     participant G as Git
     participant SCM
     A ->> S: PUT /apis/g/v/k
@@ -342,18 +342,18 @@ sequenceDiagram
 Removing an existing resource.
 
 ```
-exec wasm ["delete", "<namespace>", "<name>"]                   
-        ┌──────────────────────┐                                
-        │                      │                                
-        │     WASM Binary      │                                
-        │                      │                                
-        │                      │                                
-        │                      ├──────▶ { TBD }                 
-        └──────────────────────┘                                
+exec wasm ["delete", "<namespace>", "<name>"]                  
+        ┌──────────────────────┐                               
+        │                      │                               
+        │     WASM Binary      │                               
+        │                      │                               
+        │                      │                               
+        │                      ├──────▶ { TBD }                
+        └──────────────────────┘                               
 ```
 
 The purpose of this subcommand is to remove an existing resource.
-Implementations should adjust the filesystem appropriately for the resource type and runtimes needs.
+Implementations should adjust the filesystem appropriately for the resource type and controllers needs.
 The namespace and name of the resource is passed as arguments to the subcommand.
 
 TBD:
