@@ -33,17 +33,17 @@ The goal is to provide users with a way to manage the logical resources represen
 
 ```
 ┌─────┐            ┌──────────────────────────────┐         ┌──────────────────────────────────┐
-│     │            │Executor                      │         │ GitHub                           │
+│     │            │ Controller                   │         │ GitHub                           │
 │     │            │                              │         │                                  │
 │     │            │  flipt.io/Flag/v1            │         │  ┌─────────────────────┐         │
-│     ├────────────▶                              │         │  │Git Repository       │         │
+│     ├────────────▶                              │         │  │ Git Repository      │         │
 │     │            │ ┌──────────────────────────┐ │         │  │                     │         │
-│     │            │ │Controller                │ │  ┌──────┼─▶│                     │         │
+│     │            │ │ Wazero                   │ │  ┌──────┼─▶│                     │         │
 │     │            │ │                          │ │  │      │  │                     │         │
 │     │            │ │ exec type                │ │  │      │  │                     │         │
 │     │            │ │ exec get ...             │ │  │      │  └─────────────────────┘         │
 │     │            │ │ exec list ...            │ │  │      │  ┌─────────────────────┐         │
-│     │            │ │ exec put ...             │ │  │      │  │Git Repository       │         │
+│     │            │ │ exec put ...             │ │  │      │  │ Git Repository      │         │
 │     │            │ │ exec delete ...          │ │  │      │  │                     │         │
 │     │            │ │                          │ │  │      │  │                     │         │
 │     │            │ └───────▲─────────┬────────┘ │  │      │  │                     │         │
@@ -56,14 +56,14 @@ The goal is to provide users with a way to manage the logical resources represen
 │  r  │                                                     │ GitLab                           │
 │  v  │                                                     │                                  │
 │  e  │            ┌──────────────────────────────┐         │  ┌─────────────────────┐         │
-│  r  │            │Executor                      │         │  │Git Repository       │         │
+│  r  │            │ Controller                   │         │  │ Git Repository      │         │
 │     ├────────────▶                              │         │  │                     │         │
 │     │            │  apps/Deployment/v1          │         │  │                     │         │
 │     ◀────────────┤                              │         │  │                     │         │
 │     │            │ ...                          │         │  │                     │         │
 │     │            └──────────────────────────────┘         │  └─────────────────────┘         │
 │     │            ┌──────────────────────────────┐         │  ┌─────────────────────┐         │
-│     │            │Executor                      │         │  │Git Repository       │         │
+│     │            │ Controller                   │         │  │ Git Repository      │         │
 │     ├────────────▶                              │         │  │                     │         │
 │     │            │  my.org/Server/v1alpha1      │         │  │                     │         │
 │     ◀────────────┤                              │         │  │                     │         │
