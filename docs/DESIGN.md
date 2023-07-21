@@ -329,24 +329,27 @@ This diagram gives an overview of the flow of a successsful `PUT` request:
 sequenceDiagram
     participant A as Actor
     participant S as API Server
-    participant E as Executor
-    participant F as Worktree
-    participant R as Controller
+    participant F as git.FilesystemStore
+    participant C as Controller
+    participant R as Runtime (WASM)
     participant G as Git
     participant SCM
-    A ->> S: PUT /apis/g/v/k
-    S ->>+ E: Put(Resource{})
-    E ->>+ G: checkout()
-    G ->>- F: tree
-    E ->>+ R: exec wasm put { ... }
+    A ->>+ S: PUT /apis/s/g/v/k/...
+    S ->>+ F: Update(fn)
+    F ->> G: checkout
+    G -->>+ F: worktree
+    critical inside body of fn()
+    S ->>+ C: Put(Resource{})
+    C ->>+ R: exec wasm put { ... }
     R ->> F: write()
-    R ->>- E: exit 0
-    E ->> F: git add
-    E ->> G: commit and push
-    E ->>+ SCM: OpenPR()
-    SCM ->>- E: PR{}
-    E ->>- S: Status{}
-    S ->> A: 202 Accepted
+    R -->>- C: exit 0
+    C -->>- S: 
+    F ->>- G: add, commit and push
+    end
+    F ->> SCM: OpenPR()
+    SCM -->> F: PR{}
+    F -->>- S: Result{}
+    S -->>- A: 202 Accepted
 ```
 
 ### delete
