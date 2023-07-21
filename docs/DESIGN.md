@@ -40,16 +40,15 @@ The goal is to provide users with a way to manage the logical resources represen
 │     │            │ ┌──────────────────────────┐ │         │  │                     │         │
 │     │            │ │ Wazero                   │ │  ┌──────┼─▶│                     │         │
 │     │            │ │                          │ │  │      │  │                     │         │
-│     │            │ │ exec type                │ │  │      │  │                     │         │
-│     │            │ │ exec get ...             │ │  │      │  └─────────────────────┘         │
-│     │            │ │ exec list ...            │ │  │      │  ┌─────────────────────┐         │
-│     │            │ │ exec put ...             │ │  │      │  │ Git Repository      │         │
-│     │            │ │ exec delete ...          │ │  │      │  │                     │         │
+│     │            │ │ exec get <kind> ...      │ │  │      │  └─────────────────────┘         │
+│     │            │ │ exec list <kind> ...     │ │  │      │  ┌─────────────────────┐         │
+│     │            │ │ exec put <kind> ...      │ │  │      │  │ Git Repository      │         │
+│     │            │ │ exec delete <kind> ...   │ │  │      │  │                     │         │
 │     │            │ │                          │ │  │      │  │                     │         │
 │     │            │ └───────▲─────────┬────────┘ │  │      │  │                     │         │
 │  A  ◀────────────┤         │         │          │  │      │  │                     │         │
 │  P  │            │ ┌───────┴─────────▼────────┐ │  │      │  └─────────────────────┘         │
-│  I  │            │ │Filesystem                ◀─┼──┘  ┌───▶                                  │
+│  I  │            │ │ Filesystem               ◀─┼──┘  ┌───▶                                  │
 │     │            │ │                          │ │     │   │                                  │
 │  S  │            │ └──────────────────────────┘ ├─────┘   └──────────────────────────────────┘
 │  e  │            └──────────────────────────────┘         ┌──────────────────────────────────┐
@@ -214,33 +213,34 @@ This section is TBD.
 Given we're taking inspiration from the Kubernetes resource and API structure we've co-opted, the intent is we can leverage the resource metadata (types, namespaces, names) and operation verbage (get, list, put and delete) in some kind of future authorization policy language.
 Likelihood is we explore something close to the RBAC mechanisms available in the Kubernetes ecosystem.
 
-## Executor
+## Controller
 
-Executors sit at the heart of `cup`. A single executor handles processing requests for a single resource type via it's associated controller.
+Controllers sit at the heart of `cup`. A single controller handles processing requests for a single resource type via it's associated controller.
 
-An executor has a general behaviour over any given `Controller` implementation.
-`Controller` implementations are exposed through a process command-line interface.
-Each controller binary is compiled to WASM, available on the local filesystem.
+A controller manages a single WASM/WASI binary.
+The binary implementations exposes a command-line interfaces with a number of subcommands.
 
-The executor will take care of adapting each request into an appropriate set of command line arguments and/or STDIN written payloads.
-It then interprets any exist codes and output written to the standard output streams (STDOUT / STDERR).
+The controller will take care of adapting each request into an appropriate set of command line arguments and/or STDIN written payloads.
+It then interprets any exit codes and output written to the standard output streams (STDOUT / STDERR).
 
-It is also the executors job to prepare the WASM runtime environment for a given request.
-A request should identify either a specific Git SHA or reference.
-The executor will retrieve a read-only snapshot of the entire Git tree for the resolved revision.
+It is also the controllers job to prepare the WASM runtime environment for a given request.
+A request can identify a desired target revision. Otherwise, a default reference is chosen from configuration.
+The controller will retrieve a read-only snapshot of the entire Git tree for the resolved revision.
 This will be mounted as the root filesystem for the WASM runtime.
 
-Given a mutating operation is request (`put` or `delete`) then the executor will support writes on the filesystem.
-The executor will intercept these writes and ultimately compose them into a pull request containing the changes made.
+Given a mutating operation is requested (`put` or `delete`), the controller will support writes on the filesystem.
+The controller will intercept these writes and compose them into a pull request containing the changes made.
 
-## Controllers
+## WASM/WASI Process Interface
+
+A single binary is responsible for handling the core controller operations across a group of one or more kinds.
 
 ### get
 
 Retrieving an instance of a resource by `namespace` and `name`.
 
 ```
-exec wasm ["get", "<namespace>", "<name>"]                     
+exec wasm ["get", "<kind>", "<namespace>", "<name>"]           
         ┌──────────────────────┐                               
         │                      │        {                      
         │     WASM Binary      │            "apiVersion": "..."
@@ -270,14 +270,14 @@ The filesystem will contain the configured target Git repositories HEAD tree for
 Listing and filtering a set of resource instances by `namespace` and optional `labels`
 
 ```
-exec wasm ["list", "<namespace>", ...(k/v pairs)]                  
+exec wasm ["list", "<kind>", "<namespace>", ...(k/v pairs)]        
         ┌──────────────────────┐                                   
         │                      │        [{                         
         │     WASM Binary      │            "apiVersion": "..."    
         │                      │            "kind": "...",         
         │                      │            ...                    
         │                      ├──────▶ }, ...]                    
-        └──────────────────────┘                                   
+        └──────────────────────┘                                  
 ```
 
 The purpose of this subcommand is to return a list of instances found by the target controller.
@@ -296,7 +296,7 @@ The controller should handle filtering by namespace and optionall by a list of `
 Creating or updating an existing resource.
 
 ```
-exec wasm ["put"]                              
+exec wasm ["put", "<kind>"]                                          
                               ┌──────────────────────┐               
 {                             │                      │               
     "apiVersion": "..."       │     WASM Binary      │               
@@ -354,7 +354,7 @@ sequenceDiagram
 Removing an existing resource.
 
 ```
-exec wasm ["delete", "<namespace>", "<name>"]                  
+exec wasm ["delete", "<kind>", "<namespace>", "<name>"]        
         ┌──────────────────────┐                               
         │                      │                               
         │     WASM Binary      │                               
