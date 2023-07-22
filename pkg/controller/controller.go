@@ -1,5 +1,7 @@
 package controller
 
+import "go.flipt.io/cup/pkg/api/core"
+
 type Controller struct{}
 
 type GetRequest struct {
@@ -20,6 +22,9 @@ type ListRequest struct {
 	Labels    [][2]string
 }
 
-type PutRequest struct{}
+type PutRequest struct {
+	FSConfig
+	Resource *core.Resource
+}
 
-type DeleteRequest struct{}
+type DeleteRequest GetRequest

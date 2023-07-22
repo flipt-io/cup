@@ -45,9 +45,8 @@ type Controller interface {
 // Server is the core api.Server for cupd.
 // It handles exposing all the sources, definitions and the resources themselves.
 type Server struct {
-	*chi.Mux
-
 	mu      sync.RWMutex
+	mux     *chi.Mux
 	sources map[string]map[string]*core.ResourceDefinition
 	fs      FilesystemStore
 	rev     string
@@ -58,23 +57,30 @@ type Server struct {
 // requests for sources, definitions and resources.
 func NewServer(fs FilesystemStore) (*Server, error) {
 	s := &Server{
-		Mux:     chi.NewMux(),
+		mux:     chi.NewMux(),
 		sources: map[string]map[string]*core.ResourceDefinition{},
 		fs:      fs,
 		rev:     "main",
 	}
 
-	s.Mux.Get("/apis", s.handleSources)
-	s.Mux.Get("/apis/{source}", s.handleSourceDefinitions)
+	s.mux.Get("/apis", s.handleSources)
+	s.mux.Get("/apis/{source}", s.handleSourceDefinitions)
 
 	return s, nil
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	s.mux.ServeHTTP(w, r)
 }
 
 func (s *Server) RegisterController(source string, def *core.ResourceDefinition, cntl Controller) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for version, _ := range def.Spec.Versions {
+	for version := range def.Spec.Versions {
 		var (
 			version = version
 			prefix  = fmt.Sprintf("/apis/%s/%s/%s/%s/namespaces/{ns}", source, def.Spec.Group, version, def.Names.Plural)
@@ -82,7 +88,7 @@ func (s *Server) RegisterController(source string, def *core.ResourceDefinition,
 		)
 
 		// list kind
-		s.Mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := s.fs.View(r.Context(), source, s.rev, func(f controller.FSConfig) error {
 				resources, err := cntl.List(r.Context(), &controller.ListRequest{
 					FSConfig:  f,
@@ -110,7 +116,7 @@ func (s *Server) RegisterController(source string, def *core.ResourceDefinition,
 		}))
 
 		// get kind
-		s.Mux.Get(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.mux.Get(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := s.fs.View(r.Context(), source, s.rev, func(f controller.FSConfig) error {
 				resource, err := cntl.Get(r.Context(), &controller.GetRequest{
 					FSConfig:  f,
@@ -130,13 +136,57 @@ func (s *Server) RegisterController(source string, def *core.ResourceDefinition,
 				return
 			}
 		}))
+
+		// put kind
+		s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result, err := s.fs.Update(r.Context(), source, s.rev, func(f controller.FSConfig) error {
+				var resource core.Resource
+				if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
+					return err
+				}
+
+				return cntl.Put(r.Context(), &controller.PutRequest{
+					FSConfig: f,
+					Resource: &resource,
+				})
+			})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if err := json.NewEncoder(w).Encode(result); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}))
+
+		// delete kind
+		s.mux.Delete(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result, err := s.fs.Update(r.Context(), source, s.rev, func(f controller.FSConfig) error {
+				return cntl.Delete(r.Context(), &controller.DeleteRequest{
+					FSConfig:  f,
+					Group:     def.Spec.Group,
+					Version:   version,
+					Kind:      def.Names.Kind,
+					Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+					Name:      chi.URLParamFromCtx(r.Context(), "name"),
+				})
+			})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if err := json.NewEncoder(w).Encode(result); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}))
 	}
 }
 
 func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var sources []string
 	for src := range s.sources {
 		sources = append(sources, src)
@@ -151,9 +201,6 @@ func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSourceDefinitions(w http.ResponseWriter, r *http.Request) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	src := chi.URLParamFromCtx(r.Context(), "source")
 	definitions, ok := s.sources[src]
 	if !ok {
