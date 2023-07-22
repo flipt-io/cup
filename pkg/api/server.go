@@ -176,6 +176,7 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 						Kind:      def.Names.Kind,
 						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
 					},
+					Name:     chi.URLParamFromCtx(r.Context(), "name"),
 					Resource: &resource,
 				})
 			})

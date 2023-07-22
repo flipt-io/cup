@@ -162,7 +162,7 @@ func (c *Controller) Put(_ context.Context, req *controller.PutRequest) (err err
 		return fmt.Errorf("put: %w", err)
 	}
 
-	fi, err := req.FSConfig.ToFS().OpenFile(buf.String(), os.O_RDWR|os.O_TRUNC, 0644)
+	fi, err := req.FSConfig.ToFS().OpenFile(buf.String(), os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}

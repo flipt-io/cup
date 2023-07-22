@@ -24,6 +24,7 @@ type ListRequest struct {
 
 type PutRequest struct {
 	Request
+	Name     string
 	Resource *core.Resource
 }
 

@@ -1,11 +1,14 @@
 package api_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -172,3 +175,68 @@ func Test_Server_List(t *testing.T) {
 		},
 	}, resources)
 }
+
+func Test_Server_Put(t *testing.T) {
+	fs := memfs.New()
+	fss := mem.New()
+	fss.AddFS("cup", "main", fs)
+
+	server, err := api.NewServer(fss)
+	require.NoError(t, err)
+
+	cntrl := template.New(testDef)
+	server.RegisterController("cup", cntrl)
+
+	srv := httptest.NewServer(server)
+	t.Cleanup(srv.Close)
+
+	path := "/apis/cup/test.cup.flipt.io/v1alpha1/resources/namespaces/default/baz"
+	body := bytes.NewReader([]byte(bazPayload))
+
+	req, err := http.NewRequest("PUT", srv.URL+path, body)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	if !assert.Equal(t, http.StatusOK, resp.StatusCode) {
+		data, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		t.Log(string(data))
+		t.FailNow()
+	}
+
+	var result api.Result
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Equal(t, &api.Result{}, &result)
+
+	fi, err := fs.Open("default/test.cup.flipt.io-v1alpha1-Resource-baz.json")
+	require.NoError(t, err)
+
+	defer fi.Close()
+
+	data, err := io.ReadAll(fi)
+	require.NoError(t, err)
+
+	expected := &bytes.Buffer{}
+	require.NoError(t, json.Compact(expected, []byte(bazPayload)))
+	expected.Write([]byte{'\n'})
+
+	assert.Equal(t, expected.Bytes(), data)
+}
+
+const bazPayload = `{
+    "apiVersion": "test.cup.flipt.io",
+    "kind": "Resource",
+    "metadata": {
+        "namespace": "default",
+        "name": "baz",
+        "labels": {
+            "foo": "bar"
+        },
+        "annotations": {}
+    },
+    "spec": {}
+}`
