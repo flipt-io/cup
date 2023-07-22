@@ -36,10 +36,6 @@ type TypedEncoder[T any] interface {
 	Encode(*T) error
 }
 
-type TypedDecoder[T any] interface {
-	Decode() (*T, error)
-}
-
 type EncodingBuilder[B AnyEncodingBuilder, T any] struct {
 	b B
 	Encoder[B, T]

@@ -12,6 +12,7 @@ import (
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/controllers/template"
+	"go.flipt.io/cup/pkg/encoding"
 	"go.flipt.io/cup/pkg/fs/mem"
 )
 
@@ -116,4 +117,58 @@ func Test_Server_Get(t *testing.T) {
 		},
 		Spec: []byte(`{}`),
 	}, resource)
+}
+
+func Test_Server_List(t *testing.T) {
+	fss := mem.New()
+	fss.AddFS("cup", "main", osfs.New("testdata"))
+
+	server, err := api.NewServer(fss)
+	require.NoError(t, err)
+
+	cntrl := template.New(testDef)
+	server.RegisterController("cup", cntrl)
+
+	srv := httptest.NewServer(server)
+	t.Cleanup(srv.Close)
+
+	path := "/apis/cup/test.cup.flipt.io/v1alpha1/resources/namespaces/default"
+	resp, err := http.Get(srv.URL + path)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	decoder := encoding.NewJSONEncoding[core.Resource]().NewDecoder(resp.Body)
+
+	resources, err := encoding.DecodeAll(decoder)
+	require.NoError(t, err)
+
+	assert.Equal(t, []*core.Resource{
+		{
+			APIVersion: "test.cup.flipt.io",
+			Kind:       "Resource",
+			Metadata: core.NamespacedMetadata{
+				Namespace: "default",
+				Name:      "bar",
+				Labels: map[string]string{
+					"baz": "bar",
+				},
+				Annotations: map[string]string{},
+			},
+			Spec: []byte(`{}`),
+		},
+		{
+			APIVersion: "test.cup.flipt.io",
+			Kind:       "Resource",
+			Metadata: core.NamespacedMetadata{
+				Namespace: "default",
+				Name:      "foo",
+				Labels: map[string]string{
+					"bar": "baz",
+				},
+				Annotations: map[string]string{},
+			},
+			Spec: []byte(`{}`),
+		},
+	}, resources)
 }
