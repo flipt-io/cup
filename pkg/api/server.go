@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"sort"
 	"sync"
 
@@ -36,6 +37,7 @@ type FilesystemStore interface {
 // Controller is the core controller interface for handling interactions with a
 // single resource type.
 type Controller interface {
+	Definition() *core.ResourceDefinition
 	Get(context.Context, *controller.GetRequest) (*core.Resource, error)
 	List(context.Context, *controller.ListRequest) ([]*core.Resource, error)
 	Put(context.Context, *controller.PutRequest) error
@@ -69,6 +71,7 @@ func NewServer(fs FilesystemStore) (*Server, error) {
 	return s, nil
 }
 
+// ServeHTTP delegates to the underlying chi.Mux router.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -76,16 +79,32 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
-func (s *Server) RegisterController(source string, def *core.ResourceDefinition, cntl Controller) {
+func (s *Server) addDefinition(source string, gvk string, def *core.ResourceDefinition) {
+	src, ok := s.sources[source]
+	if !ok {
+		src = map[string]*core.ResourceDefinition{}
+		s.sources[source] = src
+	}
+
+	src[gvk] = def
+}
+
+// RegisterController adds a new controller and definition for a particular source to the server.
+// This potentially will happen dynamically in the future, so it is guarded with a write lock.
+func (s *Server) RegisterController(source string, cntl Controller) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	def := cntl.Definition()
 	for version := range def.Spec.Versions {
 		var (
 			version = version
 			prefix  = fmt.Sprintf("/apis/%s/%s/%s/%s/namespaces/{ns}", source, def.Spec.Group, version, def.Names.Plural)
 			named   = prefix + "/{name}"
 		)
+
+		// update sources map
+		s.addDefinition(source, path.Join(def.Spec.Group, version, def.Names.Kind), def)
 
 		// list kind
 		s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -2,8 +2,6 @@ package core
 
 import (
 	"encoding/json"
-
-	"github.com/xeipuuv/gojsonschema"
 )
 
 // ResourceDefinition represents a definition of a particular resource Kind and its versions
@@ -22,9 +20,9 @@ type Names struct {
 }
 
 type ResourceDefinitionSpec struct {
-	Group      string                          `json:"group"`
-	Controller ResourceDefinitionController    `json:"controller"`
-	Versions   map[string]*gojsonschema.Schema `json:"schema"`
+	Group      string                       `json:"group"`
+	Controller ResourceDefinitionController `json:"controller"`
+	Versions   map[string]json.RawMessage   `json:"schema,omitempty"`
 }
 
 type ResourceDefinitionController struct {

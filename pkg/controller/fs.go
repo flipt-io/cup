@@ -1,6 +1,9 @@
 package controller
 
-import "io/fs"
+import (
+	"io/fs"
+	"os"
+)
 
 // FSConfig encapsulates the configuration required to establish the root
 // directory of the wazero runtime when performing controller actions.
@@ -20,4 +23,15 @@ func NewDirFSConfig(dir string) FSConfig {
 	return FSConfig{
 		dir: &dir,
 	}
+}
+
+// ToFS returns either the configured fs.FS implementation or it
+// adapts the desired directory into an fs.FS using os.DirFS
+// depending on how the config was configured
+func (c *FSConfig) ToFS() fs.FS {
+	if c.dir != nil {
+		return os.DirFS(*c.dir)
+	}
+
+	return c.fs
 }
