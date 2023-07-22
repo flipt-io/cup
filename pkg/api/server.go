@@ -110,11 +110,13 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 		s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := s.fs.View(r.Context(), source, s.rev, func(f controller.FSConfig) error {
 				resources, err := cntl.List(r.Context(), &controller.ListRequest{
-					FSConfig:  f,
-					Group:     def.Spec.Group,
-					Version:   version,
-					Kind:      def.Names.Kind,
-					Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+					Request: controller.Request{
+						FSConfig:  f,
+						Group:     def.Spec.Group,
+						Version:   version,
+						Kind:      def.Names.Kind,
+						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+					},
 				})
 				if err != nil {
 					return err
@@ -138,12 +140,14 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 		s.mux.Get(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := s.fs.View(r.Context(), source, s.rev, func(f controller.FSConfig) error {
 				resource, err := cntl.Get(r.Context(), &controller.GetRequest{
-					FSConfig:  f,
-					Group:     def.Spec.Group,
-					Version:   version,
-					Kind:      def.Names.Kind,
-					Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
-					Name:      chi.URLParamFromCtx(r.Context(), "name"),
+					Request: controller.Request{
+						FSConfig:  f,
+						Group:     def.Spec.Group,
+						Version:   version,
+						Kind:      def.Names.Kind,
+						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+					},
+					Name: chi.URLParamFromCtx(r.Context(), "name"),
 				})
 				if err != nil {
 					return err
@@ -165,7 +169,13 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 				}
 
 				return cntl.Put(r.Context(), &controller.PutRequest{
-					FSConfig: f,
+					Request: controller.Request{
+						FSConfig:  f,
+						Group:     def.Spec.Group,
+						Version:   version,
+						Kind:      def.Names.Kind,
+						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+					},
 					Resource: &resource,
 				})
 			})
@@ -184,12 +194,14 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 		s.mux.Delete(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			result, err := s.fs.Update(r.Context(), source, s.rev, func(f controller.FSConfig) error {
 				return cntl.Delete(r.Context(), &controller.DeleteRequest{
-					FSConfig:  f,
-					Group:     def.Spec.Group,
-					Version:   version,
-					Kind:      def.Names.Kind,
-					Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
-					Name:      chi.URLParamFromCtx(r.Context(), "name"),
+					Request: controller.Request{
+						FSConfig:  f,
+						Group:     def.Spec.Group,
+						Version:   version,
+						Kind:      def.Names.Kind,
+						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+					},
+					Name: chi.URLParamFromCtx(r.Context(), "name"),
 				})
 			})
 			if err != nil {

@@ -6,11 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/api/core"
-	"go.flipt.io/cup/pkg/controllers/simple"
+	"go.flipt.io/cup/pkg/controllers/template"
 	"go.flipt.io/cup/pkg/fs/mem"
 )
 
@@ -39,7 +40,7 @@ func Test_Server_Source(t *testing.T) {
 	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	cntrl := simple.New(testDef)
+	cntrl := template.New(testDef)
 	server.RegisterController("cup", cntrl)
 
 	srv := httptest.NewServer(server)
@@ -61,7 +62,7 @@ func Test_Server_SourceDefinitions(t *testing.T) {
 	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	cntrl := simple.New(testDef)
+	cntrl := template.New(testDef)
 	server.RegisterController("cup", cntrl)
 
 	srv := httptest.NewServer(server)
@@ -78,4 +79,41 @@ func Test_Server_SourceDefinitions(t *testing.T) {
 	assert.Equal(t, map[string]*core.ResourceDefinition{
 		"test.cup.flipt.io/v1alpha1/Resource": testDef,
 	}, definitions)
+}
+
+func Test_Server_Get(t *testing.T) {
+	fss := mem.New()
+	fss.AddFS("cup", "main", osfs.New("testdata"))
+
+	server, err := api.NewServer(fss)
+	require.NoError(t, err)
+
+	cntrl := template.New(testDef)
+	server.RegisterController("cup", cntrl)
+
+	srv := httptest.NewServer(server)
+	t.Cleanup(srv.Close)
+
+	path := "/apis/cup/test.cup.flipt.io/v1alpha1/resources/namespaces/default/foo"
+	resp, err := http.Get(srv.URL + path)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	var resource *core.Resource
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&resource))
+
+	assert.Equal(t, &core.Resource{
+		APIVersion: "test.cup.flipt.io",
+		Kind:       "Resource",
+		Metadata: core.NamespacedMetadata{
+			Namespace: "default",
+			Name:      "foo",
+			Labels: map[string]string{
+				"bar": "baz",
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: []byte(`{}`),
+	}, resource)
 }

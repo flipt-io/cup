@@ -4,27 +4,30 @@ import "go.flipt.io/cup/pkg/api/core"
 
 type Controller struct{}
 
-type GetRequest struct {
+type Request struct {
 	FSConfig
 	Group     string
 	Version   string
 	Kind      string
 	Namespace string
-	Name      string
+}
+
+type GetRequest struct {
+	Request
+	Name string
 }
 
 type ListRequest struct {
-	FSConfig
-	Group     string
-	Version   string
-	Kind      string
-	Namespace string
-	Labels    [][2]string
+	Request
+	Labels [][2]string
 }
 
 type PutRequest struct {
-	FSConfig
+	Request
 	Resource *core.Resource
 }
 
-type DeleteRequest GetRequest
+type DeleteRequest struct {
+	Request
+	Name string
+}

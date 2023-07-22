@@ -15,7 +15,7 @@ type Decoder[B DecodeBuilder, T any] struct {
 }
 
 func NewDecoder[B DecodeBuilder, T any](r io.Reader) Decoder[B, T] {
-	var b DecodeBuilder
+	var b B
 
 	return Decoder[B, T]{decoder: b.NewDecoder(r)}
 }

@@ -17,7 +17,7 @@ type Encoder[B EncoderBuilder, T any] struct {
 }
 
 func NewEncoder[B EncoderBuilder, T any](w io.Writer) Encoder[B, T] {
-	var b EncoderBuilder
+	var b B
 
 	return Encoder[B, T]{encoder: b.NewEncoder(w)}
 }

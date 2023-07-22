@@ -3,8 +3,8 @@ package mem
 import (
 	"context"
 	"fmt"
-	"io/fs"
 
+	"github.com/go-git/go-billy/v5"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/controller"
 )
@@ -17,19 +17,19 @@ import (
 // no writes will be attempted.
 // When the FS interface in Wazero is available we can change this behaviour.
 type FilesystemStore struct {
-	store map[string]map[string]fs.FS
+	store map[string]map[string]billy.Filesystem
 }
 
 // New constructs a new instance of FilesystemStore
 func New() *FilesystemStore {
-	return &FilesystemStore{store: map[string]map[string]fs.FS{}}
+	return &FilesystemStore{store: map[string]map[string]billy.Filesystem{}}
 }
 
 // AddFS registers a new fs.FS to be supplied on calls to View and Update
-func (f *FilesystemStore) AddFS(source, revision string, ffs fs.FS) {
+func (f *FilesystemStore) AddFS(source, revision string, ffs billy.Filesystem) {
 	src, ok := f.store[source]
 	if !ok {
-		src = map[string]fs.FS{}
+		src = map[string]billy.Filesystem{}
 		f.store[source] = src
 	}
 
@@ -59,7 +59,7 @@ func (f *FilesystemStore) Update(_ context.Context, source string, revision stri
 	return &api.Result{}, fn(controller.NewFSConfig(fs))
 }
 
-func (f *FilesystemStore) fs(source, revision string) (fs.FS, error) {
+func (f *FilesystemStore) fs(source, revision string) (billy.Filesystem, error) {
 	src, ok := f.store[source]
 	if !ok {
 		return nil, fmt.Errorf("source not found: %q", source)
