@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-git/go-billy/v5/memfs"
@@ -225,6 +227,53 @@ func Test_Server_Put(t *testing.T) {
 	expected.Write([]byte{'\n'})
 
 	assert.Equal(t, expected.Bytes(), data)
+}
+
+func Test_Server_Delete(t *testing.T) {
+	var (
+		fs      = memfs.New()
+		fsPath  = "default/test.cup.flipt.io-v1alpha1-Resource-baz.json"
+		fi, err = fs.Create(fsPath)
+	)
+	require.NoError(t, err)
+
+	io.Copy(fi, strings.NewReader(bazPayload))
+	_ = fi.Close()
+
+	fss := mem.New()
+	fss.AddFS("cup", "main", fs)
+
+	server, err := api.NewServer(fss)
+	require.NoError(t, err)
+
+	cntrl := template.New(testDef)
+	server.RegisterController("cup", cntrl)
+
+	srv := httptest.NewServer(server)
+	t.Cleanup(srv.Close)
+
+	path := "/apis/cup/test.cup.flipt.io/v1alpha1/resources/namespaces/default/baz"
+	req, err := http.NewRequest("DELETE", srv.URL+path, nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	if !assert.Equal(t, http.StatusOK, resp.StatusCode) {
+		data, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		t.Log(string(data))
+		t.FailNow()
+	}
+
+	var result api.Result
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Equal(t, &api.Result{}, &result)
+
+	_, err = fs.Open(fsPath)
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 const bazPayload = `{
