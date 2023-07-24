@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 	"text/template"
 
-	"github.com/go-git/go-billy/v5/util"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controller"
@@ -87,7 +87,7 @@ func (c *Controller) Get(_ context.Context, req *controller.GetRequest) (_ *core
 		return nil, err
 	}
 
-	fi, err := req.FSConfig.ToFS().Open(buf.String())
+	fi, err := req.FS.Open(buf.String())
 	if err != nil {
 		return nil, err
 	}
@@ -110,14 +110,13 @@ func (c *Controller) List(_ context.Context, req *controller.ListRequest) (resou
 		return nil, err
 	}
 
-	ffs := req.FSConfig.ToFS()
-	matches, err := util.Glob(ffs, buf.String())
+	matches, err := fs.Glob(req.FS, buf.String())
 	if err != nil {
 		return nil, err
 	}
 
 	for _, match := range matches {
-		fi, err := ffs.Open(match)
+		fi, err := req.FS.Open(match)
 		if err != nil {
 			return nil, err
 		}

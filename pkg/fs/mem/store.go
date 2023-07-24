@@ -6,8 +6,11 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"go.flipt.io/cup/pkg/api"
+	"go.flipt.io/cup/pkg/billyfs"
 	"go.flipt.io/cup/pkg/controller"
 )
+
+var _ api.FilesystemStore = (*FilesystemStore)(nil)
 
 // FilesystemStore is primarily used for testing.
 // It approximates a real implementation using a set of fs.FS implementations.
@@ -38,19 +41,19 @@ func (f *FilesystemStore) AddFS(source, revision string, ffs billy.Filesystem) {
 
 // View invokes the provided function with an FSConfig which should enforce
 // a read-only view for the requested source and revision
-func (f *FilesystemStore) View(_ context.Context, source string, revision string, fn api.FSFunc) error {
+func (f *FilesystemStore) View(_ context.Context, source string, revision string, fn api.ViewFunc) error {
 	fs, err := f.fs(source, revision)
 	if err != nil {
 		return fmt.Errorf("view: %w", err)
 	}
 
-	return fn(controller.NewFSConfig(fs))
+	return fn(billyfs.New(fs))
 }
 
 // Update invokes the provided function with an FSConfig which can be written to
 // Any writes performed to the target during the execution of fn will be added,
 // comitted, pushed and proposed for review on a target SCM
-func (f *FilesystemStore) Update(_ context.Context, source string, revision string, fn api.FSFunc) (*api.Result, error) {
+func (f *FilesystemStore) Update(_ context.Context, source, revision, _ string, fn api.UpdateFunc) (*api.Result, error) {
 	fs, err := f.fs(source, revision)
 	if err != nil {
 		return nil, fmt.Errorf("update: %w", err)
