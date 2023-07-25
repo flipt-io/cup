@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oklog/ulid/v2"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/controller"
 )
@@ -24,7 +25,9 @@ type ViewFunc func(fs.FS) error
 type UpdateFunc func(controller.FSConfig) error
 
 // Result is the result of performing an update on a target FilesystemStore.
-type Result struct{}
+type Result struct {
+	ID ulid.ULID
+}
 
 // FilesystemStore is the abstraction around target sources, repositories and SCMs
 // It is used by the API server to both read and propose changes based on the

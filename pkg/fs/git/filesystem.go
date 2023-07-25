@@ -14,7 +14,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/gofrs/uuid"
+	"github.com/oklog/ulid/v2"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controller"
@@ -22,15 +22,23 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+// Proposal is the internal representation of what becomes a pull or merge request
+// on a target SCM.
+// It contains the fields necessary to identify the proposed branch and describe
+// the change.
 type Proposal struct {
+	ID    ulid.ULID
 	Head  string
 	Base  string
 	Title string
 	Body  string
 }
 
+// ProposalResponse is a structure which will contain any details identifying
+// the successful proposition.
 type ProposalResponse struct{}
 
+// SCM is an abstraction around repositories and source control providers.
 type SCM interface {
 	Propose(context.Context, Proposal) (ProposalResponse, error)
 }
@@ -48,6 +56,11 @@ type Filesystem struct {
 	scm      SCM
 	interval time.Duration
 	auth     transport.AuthMethod
+
+	// notify is used for informing listeners
+	// during tests that a fetch was performed
+	// and the state was updated
+	notify chan struct{}
 }
 
 // WithPollInterval configures the interval in which origin is polled to
@@ -75,6 +88,7 @@ func NewFilesystem(ctx context.Context, scm SCM, url string, opts ...containers.
 		url:      url,
 		scm:      scm,
 		interval: 30 * time.Second,
+		notify:   make(chan struct{}, 1),
 	}
 	containers.ApplyAll(fs, opts...)
 
@@ -148,11 +162,12 @@ func (s *Filesystem) Update(ctx context.Context, rev, message string, fn api.Upd
 		return nil, fmt.Errorf("open worktree: %w", err)
 	}
 
-	id := uuid.Must(uuid.NewV4()).String()
-	result := &api.Result{}
+	result := &api.Result{
+		ID: ulid.Make(),
+	}
 
 	// create proposal branch (cup/proposal/$id)
-	branch := fmt.Sprintf("cup/proposal/%s", id)
+	branch := fmt.Sprintf("cup/proposal/%s", result.ID)
 	if err := repo.CreateBranch(&config.Branch{
 		Name:   branch,
 		Remote: "origin",
@@ -206,11 +221,11 @@ func (s *Filesystem) Update(ctx context.Context, rev, message string, fn api.Upd
 
 	if _, err := s.scm.Propose(ctx, Proposal{
 		Head:  branch,
-		Base:  "main",
+		Base:  rev,
 		Title: message,
-		// TODO(georgmac): define a sensible body
+		Body:  message,
 	}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("proposing change: %w", err)
 	}
 
 	return result, nil
@@ -221,7 +236,7 @@ func (s *Filesystem) resolve(r string) (plumbing.Hash, error) {
 		return plumbing.NewHash(r), nil
 	}
 
-	ref, err := s.repo.Reference(plumbing.NewBranchReferenceName(r), true)
+	ref, err := s.repo.Reference(plumbing.NewRemoteReferenceName("origin", r), true)
 	if err != nil {
 		return plumbing.ZeroHash, err
 	}
@@ -241,10 +256,19 @@ func (s *Filesystem) pollRefs(ctx context.Context) {
 			}); err != nil {
 				if errors.Is(err, git.NoErrAlreadyUpToDate) {
 					slog.Debug("References are all up to date")
+
 					continue
 				}
 
 				slog.Error("Fetching references", "error", err)
+			}
+
+			// attempt to notify any listeners
+			// but dont block if nothing is listening
+			// this is used for tests
+			select {
+			case s.notify <- struct{}{}:
+			default:
 			}
 		}
 	}
