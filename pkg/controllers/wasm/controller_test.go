@@ -3,10 +3,13 @@ package wasm
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -109,6 +112,91 @@ func Test_Controller_List(t *testing.T) {
 			Spec: []byte(`{}`),
 		},
 	}, resources)
+}
+
+func Test_Controller_Put(t *testing.T) {
+	wasm, skip := compileTestController(t)
+	if skip {
+		return
+	}
+
+	ctx := context.Background()
+	controller := New(ctx, wasm)
+
+	// copy test data into tmp dir
+	testdata := testdataFS(t)
+	dir := t.TempDir()
+	fs.WalkDir(testdata, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		fi, err := testdata.Open(p)
+		if err != nil {
+			return err
+		}
+
+		defer fi.Close()
+
+		dst, err := os.Create(path.Join(dir, p))
+		if err != nil {
+			return err
+		}
+
+		defer dst.Close()
+
+		_, err = io.Copy(dst, fi)
+		return err
+	})
+
+	err := controller.Put(ctx, &controllers.PutRequest{
+		FSConfig: controllers.NewDirFSConfig(dir),
+		Request: controllers.Request{
+			Group:     "test.cup.flipt.io",
+			Version:   "v1alpha1",
+			Kind:      "Resource",
+			Namespace: "default",
+		},
+		Resource: &core.Resource{
+			APIVersion: "test.cup.flipt.io/v1alpha1",
+			Kind:       "Resource",
+			Metadata: core.NamespacedMetadata{
+				Namespace: "default",
+				Name:      "baz",
+				Labels: map[string]string{
+					"foo": "bar",
+				},
+				Annotations: map[string]string{},
+			},
+			Spec: []byte(`{}`),
+		},
+	})
+	require.NoError(t, err)
+
+	var resource core.Resource
+	fi, err := os.Open(path.Join(dir, "test.cup.flipt.io-v1alpha1-Resource-default-baz.json"))
+	require.NoError(t, err)
+
+	err = json.NewDecoder(fi).Decode(&resource)
+	require.NoError(t, err)
+
+	assert.Equal(t, &core.Resource{
+		APIVersion: "test.cup.flipt.io/v1alpha1",
+		Kind:       "Resource",
+		Metadata: core.NamespacedMetadata{
+			Namespace: "default",
+			Name:      "baz",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: []byte(`{}`),
+	}, &resource)
 }
 
 func compileTestController(t *testing.T) ([]byte, bool) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"sort"
 
 	"go.flipt.io/cup/pkg/api/core"
@@ -67,10 +68,8 @@ func main() {
 			os.Exit(2)
 		}
 
-		if err := json.NewEncoder(os.Stdout).Encode(resource); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
-		}
+		err = json.NewEncoder(os.Stdout).Encode(resource)
+		fatal(err)
 
 		return
 	case "list":
@@ -91,6 +90,19 @@ func main() {
 		for _, name := range names {
 			enc.Encode(namespace[name])
 		}
+	case "put":
+		var resource core.Resource
+		err := json.NewDecoder(os.Stdin).Decode(&resource)
+		fatal(err)
+
+		group, version := path.Split(resource.APIVersion)
+
+		fi, err := os.Create(fmt.Sprintf("%s-%s-%s-%s-%s.json", group[:len(group)-1], version, resource.Kind, resource.Metadata.Namespace, resource.Metadata.Name))
+		fatal(err)
+		defer fi.Close()
+
+		err = json.NewEncoder(fi).Encode(&resource)
+		fatal(err)
 	default:
 		fmt.Fprintf(os.Stderr, "unexpected command %q", os.Args[1])
 		os.Exit(1)
