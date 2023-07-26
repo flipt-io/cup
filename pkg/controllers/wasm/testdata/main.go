@@ -103,6 +103,9 @@ func main() {
 
 		err = json.NewEncoder(fi).Encode(&resource)
 		fatal(err)
+	case "delete":
+		err := os.Remove(fmt.Sprintf("test.cup.flipt.io-v1alpha1-%s-%s-%s.json", os.Args[2], os.Args[3], os.Args[4]))
+		fatal(err)
 	default:
 		fmt.Fprintf(os.Stderr, "unexpected command %q", os.Args[1])
 		os.Exit(1)
