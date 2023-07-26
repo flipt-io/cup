@@ -8,20 +8,20 @@ import (
 // FSConfig encapsulates the configuration required to establish the root
 // directory of the wazero runtime when performing controller actions.
 type FSConfig struct {
-	fs  billy.Filesystem
-	dir *string
+	FS  billy.Filesystem
+	Dir *string
 }
 
 // NewFSConfig constructs an FSConfig which wraps an implementation of fs.FS (read-only).
 func NewFSConfig(fs billy.Filesystem) FSConfig {
-	return FSConfig{fs: fs}
+	return FSConfig{FS: fs}
 }
 
 // NewDirFSConfig constructs an FSConfig which idenitifes a target directory on disk
 // to be leveraged when mounting the wazero FS (currently to support writes).
 func NewDirFSConfig(dir string) FSConfig {
 	return FSConfig{
-		dir: &dir,
+		Dir: &dir,
 	}
 }
 
@@ -29,9 +29,9 @@ func NewDirFSConfig(dir string) FSConfig {
 // adapts the desired directory into an fs.FS using os.DirFS
 // depending on how the config was configured
 func (c *FSConfig) ToFS() billy.Filesystem {
-	if c.dir != nil {
-		return osfs.New(*c.dir)
+	if c.Dir != nil {
+		return osfs.New(*c.Dir)
 	}
 
-	return c.fs
+	return c.FS
 }
