@@ -4,22 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"path"
 	"sort"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oklog/ulid/v2"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/controller"
 )
 
-// FSFunc is a function passed to a FilesystemStore implementation to be invoked
-// over a provided FSConfig in either a View or Update transaction context.
-type FSFunc func(controller.FSConfig) error
+// ViewFunc is a function provided to FilesystemStore.View.
+// It is provided with a read-only view of the target filesystem.
+type ViewFunc func(fs.FS) error
+
+// UpdateFunc is a function passed to a FilesystemStore implementation to be invoked
+// over a provided FSConfig in a call to Update.
+type UpdateFunc func(controller.FSConfig) error
 
 // Result is the result of performing an update on a target FilesystemStore.
-type Result struct{}
+type Result struct {
+	ID ulid.ULID
+}
 
 // FilesystemStore is the abstraction around target sources, repositories and SCMs
 // It is used by the API server to both read and propose changes based on the
@@ -27,11 +35,11 @@ type Result struct{}
 type FilesystemStore interface {
 	// View invokes the provided function with an FSConfig which should enforce
 	// a read-only view for the requested source and revision
-	View(_ context.Context, source, revision string, fn FSFunc) error
+	View(_ context.Context, source, revision string, fn ViewFunc) error
 	// Update invokes the provided function with an FSConfig which can be written to
 	// Any writes performed to the target during the execution of fn will be added,
 	// comitted, pushed and proposed for review on a target SCM
-	Update(_ context.Context, source, revision string, fn FSFunc) (*Result, error)
+	Update(_ context.Context, source, revision, message string, fn UpdateFunc) (*Result, error)
 }
 
 // Controller is the core controller interface for handling interactions with a
@@ -90,7 +98,7 @@ func (s *Server) addDefinition(source string, gvk string, def *core.ResourceDefi
 }
 
 // RegisterController adds a new controller and definition for a particular source to the server.
-// This potentially will happen dynamically in the future, so it is guarded with a write lock.
+// This may happen dynamically in the future, so it is guarded with a write lock.
 func (s *Server) RegisterController(source string, cntl Controller) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -108,15 +116,15 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 
 		// list kind
 		s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if err := s.fs.View(r.Context(), source, s.rev, func(f controller.FSConfig) error {
+			if err := s.fs.View(r.Context(), source, s.rev, func(f fs.FS) error {
 				resources, err := cntl.List(r.Context(), &controller.ListRequest{
 					Request: controller.Request{
-						FSConfig:  f,
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,
 						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
 					},
+					FS: f,
 				})
 				if err != nil {
 					return err
@@ -138,15 +146,15 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 
 		// get kind
 		s.mux.Get(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if err := s.fs.View(r.Context(), source, s.rev, func(f controller.FSConfig) error {
+			if err := s.fs.View(r.Context(), source, s.rev, func(f fs.FS) error {
 				resource, err := cntl.Get(r.Context(), &controller.GetRequest{
 					Request: controller.Request{
-						FSConfig:  f,
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,
 						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
 					},
+					FS:   f,
 					Name: chi.URLParamFromCtx(r.Context(), "name"),
 				})
 				if err != nil {
@@ -162,7 +170,9 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 
 		// put kind
 		s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			result, err := s.fs.Update(r.Context(), source, s.rev, func(f controller.FSConfig) error {
+			// TODO(georgemac): derive a suitable message
+			var message string
+			result, err := s.fs.Update(r.Context(), source, s.rev, message, func(f controller.FSConfig) error {
 				var resource core.Resource
 				if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
 					return err
@@ -170,12 +180,12 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 
 				return cntl.Put(r.Context(), &controller.PutRequest{
 					Request: controller.Request{
-						FSConfig:  f,
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,
 						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
 					},
+					FSConfig: f,
 					Name:     chi.URLParamFromCtx(r.Context(), "name"),
 					Resource: &resource,
 				})
@@ -193,16 +203,18 @@ func (s *Server) RegisterController(source string, cntl Controller) {
 
 		// delete kind
 		s.mux.Delete(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			result, err := s.fs.Update(r.Context(), source, s.rev, func(f controller.FSConfig) error {
+			// TODO(georgemac): derive a suitable message
+			var message string
+			result, err := s.fs.Update(r.Context(), source, s.rev, message, func(f controller.FSConfig) error {
 				return cntl.Delete(r.Context(), &controller.DeleteRequest{
 					Request: controller.Request{
-						FSConfig:  f,
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,
 						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
 					},
-					Name: chi.URLParamFromCtx(r.Context(), "name"),
+					FSConfig: f,
+					Name:     chi.URLParamFromCtx(r.Context(), "name"),
 				})
 			})
 			if err != nil {

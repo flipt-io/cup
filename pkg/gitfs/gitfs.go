@@ -12,7 +12,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
-	"go.flipt.io/cup/internal/containers"
+	"go.flipt.io/cup/pkg/containers"
 )
 
 // FS is a filesystem implementation that decorates a git storage
