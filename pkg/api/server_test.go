@@ -33,8 +33,7 @@ var testDef = &core.ResourceDefinition{
 		Plural:   "resources",
 	},
 	Spec: core.ResourceDefinitionSpec{
-		Group:      "test.cup.flipt.io",
-		Controller: core.ResourceDefinitionController{},
+		Group: "test.cup.flipt.io",
 		Versions: map[string]json.RawMessage{
 			"v1alpha1": []byte("null"),
 		},

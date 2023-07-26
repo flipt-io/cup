@@ -10,10 +10,12 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/oklog/ulid/v2"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/controller"
+	"golang.org/x/exp/slog"
 )
 
 // ViewFunc is a function provided to FilesystemStore.View.
@@ -71,6 +73,8 @@ func NewServer() (*Server, error) {
 		rev:     "main",
 	}
 
+	s.mux.Use(middleware.Logger)
+
 	s.mux.Get("/apis", s.handleSources)
 	s.mux.Get("/apis/{source}", s.handleSourceDefinitions)
 
@@ -86,6 +90,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) addDefinition(source string, gvk string, def *core.ResourceDefinition) {
+	slog.Debug("Adding Definition", "source", source, "gvk", gvk)
+
 	src, ok := s.sources[source]
 	if !ok {
 		src = map[string]*core.ResourceDefinition{}
@@ -229,6 +235,9 @@ func (s *Server) RegisterController(source string, fss Filesystem, cntl Controll
 }
 
 func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	var sources []string
 	for src := range s.sources {
 		sources = append(sources, src)
@@ -243,6 +252,9 @@ func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSourceDefinitions(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	src := chi.URLParamFromCtx(r.Context(), "source")
 	definitions, ok := s.sources[src]
 	if !ok {
