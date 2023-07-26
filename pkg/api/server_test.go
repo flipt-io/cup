@@ -33,8 +33,7 @@ var testDef = &core.ResourceDefinition{
 		Plural:   "resources",
 	},
 	Spec: core.ResourceDefinitionSpec{
-		Group:      "test.cup.flipt.io",
-		Controller: core.ResourceDefinitionController{},
+		Group: "test.cup.flipt.io",
 		Versions: map[string]json.RawMessage{
 			"v1alpha1": []byte("null"),
 		},
@@ -42,12 +41,15 @@ var testDef = &core.ResourceDefinition{
 }
 
 func Test_Server_Source(t *testing.T) {
-	fss := mem.New()
-	server, err := api.NewServer(fss)
+	var (
+		fss   = mem.New()
+		cntrl = template.New(testDef)
+	)
+
+	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	cntrl := template.New(testDef)
-	server.RegisterController("cup", cntrl)
+	server.RegisterController("cup", fss, cntrl)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -64,12 +66,15 @@ func Test_Server_Source(t *testing.T) {
 }
 
 func Test_Server_SourceDefinitions(t *testing.T) {
-	fss := mem.New()
-	server, err := api.NewServer(fss)
+	var (
+		fss   = mem.New()
+		cntrl = template.New(testDef)
+	)
+
+	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	cntrl := template.New(testDef)
-	server.RegisterController("cup", cntrl)
+	server.RegisterController("cup", fss, cntrl)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -89,13 +94,14 @@ func Test_Server_SourceDefinitions(t *testing.T) {
 
 func Test_Server_Get(t *testing.T) {
 	fss := mem.New()
-	fss.AddFS("cup", "main", osfs.New("testdata"))
-
-	server, err := api.NewServer(fss)
-	require.NoError(t, err)
+	fss.AddFS("main", osfs.New("testdata"))
 
 	cntrl := template.New(testDef)
-	server.RegisterController("cup", cntrl)
+
+	server, err := api.NewServer()
+	require.NoError(t, err)
+
+	server.RegisterController("cup", fss, cntrl)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -126,13 +132,13 @@ func Test_Server_Get(t *testing.T) {
 
 func Test_Server_List(t *testing.T) {
 	fss := mem.New()
-	fss.AddFS("cup", "main", osfs.New("testdata"))
+	fss.AddFS("main", osfs.New("testdata"))
+	cntrl := template.New(testDef)
 
-	server, err := api.NewServer(fss)
+	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	cntrl := template.New(testDef)
-	server.RegisterController("cup", cntrl)
+	server.RegisterController("cup", fss, cntrl)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -181,13 +187,13 @@ func Test_Server_List(t *testing.T) {
 func Test_Server_Put(t *testing.T) {
 	fs := memfs.New()
 	fss := mem.New()
-	fss.AddFS("cup", "main", fs)
-
-	server, err := api.NewServer(fss)
-	require.NoError(t, err)
+	fss.AddFS("main", fs)
 
 	cntrl := template.New(testDef)
-	server.RegisterController("cup", cntrl)
+
+	server, err := api.NewServer()
+	require.NoError(t, err)
+	server.RegisterController("cup", fss, cntrl)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -241,13 +247,13 @@ func Test_Server_Delete(t *testing.T) {
 	_ = fi.Close()
 
 	fss := mem.New()
-	fss.AddFS("cup", "main", fs)
+	fss.AddFS("main", fs)
+	cntrl := template.New(testDef)
 
-	server, err := api.NewServer(fss)
+	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	cntrl := template.New(testDef)
-	server.RegisterController("cup", cntrl)
+	server.RegisterController("cup", fss, cntrl)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)

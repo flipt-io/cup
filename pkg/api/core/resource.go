@@ -4,6 +4,11 @@ import (
 	"encoding/json"
 )
 
+const (
+	ResourceDefinitionAPIVersion = "cup.flipt.io/v1alpha1"
+	ResourceDefinitionKind       = "ResourceDefinition"
+)
+
 // ResourceDefinition represents a definition of a particular resource Kind and its versions
 type ResourceDefinition struct {
 	APIVersion string                 `json:"apiVersion"`
@@ -20,13 +25,8 @@ type Names struct {
 }
 
 type ResourceDefinitionSpec struct {
-	Group      string                       `json:"group"`
-	Controller ResourceDefinitionController `json:"controller"`
-	Versions   map[string]json.RawMessage   `json:"schema,omitempty"`
-}
-
-type ResourceDefinitionController struct {
-	Path string `json:"path"`
+	Group    string                     `json:"group"`
+	Versions map[string]json.RawMessage `json:"versions,omitempty"`
 }
 
 // Metadata contains Resource metadata include name, labels and annotations
