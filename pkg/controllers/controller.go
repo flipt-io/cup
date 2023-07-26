@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"io/fs"
+	"path"
 
 	"go.flipt.io/cup/pkg/api/core"
 )
@@ -13,6 +14,10 @@ type Request struct {
 	Version   string
 	Kind      string
 	Namespace string
+}
+
+func (r Request) String() string {
+	return path.Join(r.Group, r.Version, r.Kind, r.Namespace)
 }
 
 type GetRequest struct {
