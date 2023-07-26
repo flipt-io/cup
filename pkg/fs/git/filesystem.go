@@ -17,7 +17,7 @@ import (
 	"github.com/oklog/ulid/v2"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/containers"
-	"go.flipt.io/cup/pkg/controller"
+	"go.flipt.io/cup/pkg/controllers"
 	"go.flipt.io/cup/pkg/gitfs"
 	"golang.org/x/exp/slog"
 )
@@ -185,7 +185,7 @@ func (s *Filesystem) Update(ctx context.Context, rev, message string, fn api.Upd
 		return nil, fmt.Errorf("checkout branch: %w", err)
 	}
 
-	if err := fn(controller.NewDirFSConfig(dir)); err != nil {
+	if err := fn(controllers.NewDirFSConfig(dir)); err != nil {
 		return nil, fmt.Errorf("execute proposal: %w", err)
 	}
 

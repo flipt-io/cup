@@ -6,7 +6,7 @@ import (
 	"github.com/go-git/go-billy/v5/osfs"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/billyfs"
-	"go.flipt.io/cup/pkg/controller"
+	"go.flipt.io/cup/pkg/controllers"
 )
 
 // Filesystem implements the abstraction required by an *api.Server
@@ -32,5 +32,5 @@ func (f *Filesystem) View(_ context.Context, revision string, fn api.ViewFunc) e
 // Any writes performed to the target during the execution of fn will be added,
 // comitted, pushed and proposed for review on a target SCM.
 func (f *Filesystem) Update(_ context.Context, revision string, message string, fn api.UpdateFunc) (*api.Result, error) {
-	return &api.Result{}, fn(controller.NewFSConfig(osfs.New(f.path)))
+	return &api.Result{}, fn(controllers.NewFSConfig(osfs.New(f.path)))
 }

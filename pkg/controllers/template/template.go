@@ -12,7 +12,7 @@ import (
 
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/containers"
-	"go.flipt.io/cup/pkg/controller"
+	"go.flipt.io/cup/pkg/controllers"
 	"go.flipt.io/cup/pkg/encoding"
 )
 
@@ -75,7 +75,7 @@ func (c *Controller) Definition() *core.ResourceDefinition {
 	return c.definition
 }
 
-func (c *Controller) Get(_ context.Context, req *controller.GetRequest) (_ *core.Resource, err error) {
+func (c *Controller) Get(_ context.Context, req *controllers.GetRequest) (_ *core.Resource, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("get: %w", err)
@@ -98,7 +98,7 @@ func (c *Controller) Get(_ context.Context, req *controller.GetRequest) (_ *core
 
 // List finds all the resources on the provided FS in the folder { namespace }
 // The result set is filtered by any specified labels.
-func (c *Controller) List(_ context.Context, req *controller.ListRequest) (resources []*core.Resource, err error) {
+func (c *Controller) List(_ context.Context, req *controllers.ListRequest) (resources []*core.Resource, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("list: %w", err)
@@ -149,7 +149,7 @@ func (c *Controller) List(_ context.Context, req *controller.ListRequest) (resou
 }
 
 // Put for now is a silent noop as we dont have a writable filesystem abstraction
-func (c *Controller) Put(_ context.Context, req *controller.PutRequest) (err error) {
+func (c *Controller) Put(_ context.Context, req *controllers.PutRequest) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("put: %w", err)
@@ -172,7 +172,7 @@ func (c *Controller) Put(_ context.Context, req *controller.PutRequest) (err err
 }
 
 // Delete for now is a silent noop as we dont have a writable filesystem abstraction
-func (c *Controller) Delete(_ context.Context, req *controller.DeleteRequest) (err error) {
+func (c *Controller) Delete(_ context.Context, req *controllers.DeleteRequest) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("delete: %w", err)

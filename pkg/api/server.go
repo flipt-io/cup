@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oklog/ulid/v2"
 	"go.flipt.io/cup/pkg/api/core"
-	"go.flipt.io/cup/pkg/controller"
+	"go.flipt.io/cup/pkg/controllers"
 	"golang.org/x/exp/slog"
 )
 
@@ -24,7 +24,7 @@ type ViewFunc func(fs.FS) error
 
 // UpdateFunc is a function passed to a FilesystemStore implementation to be invoked
 // over a provided FSConfig in a call to Update.
-type UpdateFunc func(controller.FSConfig) error
+type UpdateFunc func(controllers.FSConfig) error
 
 // Result is the result of performing an update on a target FilesystemStore.
 type Result struct {
@@ -48,10 +48,10 @@ type Filesystem interface {
 // single resource type.
 type Controller interface {
 	Definition() *core.ResourceDefinition
-	Get(context.Context, *controller.GetRequest) (*core.Resource, error)
-	List(context.Context, *controller.ListRequest) ([]*core.Resource, error)
-	Put(context.Context, *controller.PutRequest) error
-	Delete(context.Context, *controller.DeleteRequest) error
+	Get(context.Context, *controllers.GetRequest) (*core.Resource, error)
+	List(context.Context, *controllers.ListRequest) ([]*core.Resource, error)
+	Put(context.Context, *controllers.PutRequest) error
+	Delete(context.Context, *controllers.DeleteRequest) error
 }
 
 // Server is the core api.Server for cupd.
@@ -121,8 +121,8 @@ func (s *Server) RegisterController(source string, fss Filesystem, cntl Controll
 		// list kind
 		s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := fss.View(r.Context(), s.rev, func(f fs.FS) error {
-				resources, err := cntl.List(r.Context(), &controller.ListRequest{
-					Request: controller.Request{
+				resources, err := cntl.List(r.Context(), &controllers.ListRequest{
+					Request: controllers.Request{
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,
@@ -151,8 +151,8 @@ func (s *Server) RegisterController(source string, fss Filesystem, cntl Controll
 		// get kind
 		s.mux.Get(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := fss.View(r.Context(), s.rev, func(f fs.FS) error {
-				resource, err := cntl.Get(r.Context(), &controller.GetRequest{
-					Request: controller.Request{
+				resource, err := cntl.Get(r.Context(), &controllers.GetRequest{
+					Request: controllers.Request{
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,
@@ -176,14 +176,14 @@ func (s *Server) RegisterController(source string, fss Filesystem, cntl Controll
 		s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// TODO(georgemac): derive a suitable message
 			var message string
-			result, err := fss.Update(r.Context(), s.rev, message, func(f controller.FSConfig) error {
+			result, err := fss.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
 				var resource core.Resource
 				if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
 					return err
 				}
 
-				return cntl.Put(r.Context(), &controller.PutRequest{
-					Request: controller.Request{
+				return cntl.Put(r.Context(), &controllers.PutRequest{
+					Request: controllers.Request{
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,
@@ -209,9 +209,9 @@ func (s *Server) RegisterController(source string, fss Filesystem, cntl Controll
 		s.mux.Delete(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// TODO(georgemac): derive a suitable message
 			var message string
-			result, err := fss.Update(r.Context(), s.rev, message, func(f controller.FSConfig) error {
-				return cntl.Delete(r.Context(), &controller.DeleteRequest{
-					Request: controller.Request{
+			result, err := fss.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
+				return cntl.Delete(r.Context(), &controllers.DeleteRequest{
+					Request: controllers.Request{
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,

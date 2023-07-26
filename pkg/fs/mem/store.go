@@ -8,7 +8,7 @@ import (
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/billyfs"
 	"go.flipt.io/cup/pkg/containers"
-	"go.flipt.io/cup/pkg/controller"
+	"go.flipt.io/cup/pkg/controllers"
 )
 
 var _ api.Filesystem = (*Filesystem)(nil)
@@ -51,5 +51,5 @@ func (f *Filesystem) Update(_ context.Context, revision, _ string, fn api.Update
 		return nil, fmt.Errorf("update: %w", err)
 	}
 
-	return &api.Result{}, fn(controller.NewFSConfig(fs))
+	return &api.Result{}, fn(controllers.NewFSConfig(fs))
 }
