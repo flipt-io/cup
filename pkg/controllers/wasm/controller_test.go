@@ -21,13 +21,6 @@ import (
 //go:embed testdata/*
 var testdata embed.FS
 
-func testdataFS(t *testing.T) fs.FS {
-	fs, err := fs.Sub(testdata, "testdata")
-	require.NoError(t, err)
-
-	return fs
-}
-
 func Test_Controller_Get(t *testing.T) {
 	wasm, skip := compileTestController(t)
 	if skip {
@@ -124,34 +117,7 @@ func Test_Controller_Put(t *testing.T) {
 	controller := New(ctx, wasm)
 
 	// copy test data into tmp dir
-	testdata := testdataFS(t)
-	dir := t.TempDir()
-	fs.WalkDir(testdata, ".", func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if d.IsDir() {
-			return nil
-		}
-
-		fi, err := testdata.Open(p)
-		if err != nil {
-			return err
-		}
-
-		defer fi.Close()
-
-		dst, err := os.Create(path.Join(dir, p))
-		if err != nil {
-			return err
-		}
-
-		defer dst.Close()
-
-		_, err = io.Copy(dst, fi)
-		return err
-	})
+	dir := testdataFSCopy(t)
 
 	err := controller.Put(ctx, &controllers.PutRequest{
 		FSConfig: controllers.NewDirFSConfig(dir),
@@ -197,6 +163,74 @@ func Test_Controller_Put(t *testing.T) {
 		},
 		Spec: []byte(`{}`),
 	}, &resource)
+}
+
+func Test_Controller_Delete(t *testing.T) {
+	wasm, skip := compileTestController(t)
+	if skip {
+		return
+	}
+
+	ctx := context.Background()
+	controller := New(ctx, wasm)
+
+	// copy test data into tmp dir
+	dir := testdataFSCopy(t)
+
+	err := controller.Delete(ctx, &controllers.DeleteRequest{
+		FSConfig: controllers.NewDirFSConfig(dir),
+		Request: controllers.Request{
+			Group:     "test.cup.flipt.io",
+			Version:   "v1alpha1",
+			Kind:      "Resource",
+			Namespace: "default",
+		},
+		Name: "foo",
+	})
+	require.NoError(t, err)
+
+	_, err = os.Open(path.Join(dir, "test.cup.flipt.io-v1alpha1-Resource-default-foo.json"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func testdataFS(t *testing.T) fs.FS {
+	fs, err := fs.Sub(testdata, "testdata")
+	require.NoError(t, err)
+
+	return fs
+}
+
+func testdataFSCopy(t *testing.T) string {
+	testdata := testdataFS(t)
+	dir := t.TempDir()
+	fs.WalkDir(testdata, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		fi, err := testdata.Open(p)
+		if err != nil {
+			return err
+		}
+
+		defer fi.Close()
+
+		dst, err := os.Create(path.Join(dir, p))
+		if err != nil {
+			return err
+		}
+
+		defer dst.Close()
+
+		_, err = io.Copy(dst, fi)
+		return err
+	})
+
+	return dir
 }
 
 func compileTestController(t *testing.T) ([]byte, bool) {
