@@ -43,13 +43,13 @@ var testDef = &core.ResourceDefinition{
 func Test_Server_Source(t *testing.T) {
 	var (
 		fss   = mem.New()
-		cntrl = template.New(testDef)
+		cntrl = template.New()
 	)
 
 	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	server.RegisterController("cup", fss, cntrl)
+	server.Register("cup", fss, cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -68,13 +68,13 @@ func Test_Server_Source(t *testing.T) {
 func Test_Server_SourceDefinitions(t *testing.T) {
 	var (
 		fss   = mem.New()
-		cntrl = template.New(testDef)
+		cntrl = template.New()
 	)
 
 	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	server.RegisterController("cup", fss, cntrl)
+	server.Register("cup", fss, cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -96,12 +96,12 @@ func Test_Server_Get(t *testing.T) {
 	fss := mem.New()
 	fss.AddFS("main", osfs.New("testdata"))
 
-	cntrl := template.New(testDef)
+	cntrl := template.New()
 
 	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	server.RegisterController("cup", fss, cntrl)
+	server.Register("cup", fss, cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -133,12 +133,12 @@ func Test_Server_Get(t *testing.T) {
 func Test_Server_List(t *testing.T) {
 	fss := mem.New()
 	fss.AddFS("main", osfs.New("testdata"))
-	cntrl := template.New(testDef)
+	cntrl := template.New()
 
 	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	server.RegisterController("cup", fss, cntrl)
+	server.Register("cup", fss, cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -189,11 +189,11 @@ func Test_Server_Put(t *testing.T) {
 	fss := mem.New()
 	fss.AddFS("main", fs)
 
-	cntrl := template.New(testDef)
+	cntrl := template.New()
 
 	server, err := api.NewServer()
 	require.NoError(t, err)
-	server.RegisterController("cup", fss, cntrl)
+	server.Register("cup", fss, cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -248,12 +248,12 @@ func Test_Server_Delete(t *testing.T) {
 
 	fss := mem.New()
 	fss.AddFS("main", fs)
-	cntrl := template.New(testDef)
+	cntrl := template.New()
 
 	server, err := api.NewServer()
 	require.NoError(t, err)
 
-	server.RegisterController("cup", fss, cntrl)
+	server.Register("cup", fss, cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
