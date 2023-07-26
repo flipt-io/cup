@@ -22,6 +22,8 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+var _ api.Filesystem = (*Filesystem)(nil)
+
 // Proposal is the internal representation of what becomes a pull or merge request
 // on a target SCM.
 // It contains the fields necessary to identify the proposed branch and describe

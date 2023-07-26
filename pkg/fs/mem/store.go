@@ -7,42 +7,34 @@ import (
 	"github.com/go-git/go-billy/v5"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/billyfs"
+	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controller"
 )
 
-var _ api.FilesystemStore = (*FilesystemStore)(nil)
+var _ api.Filesystem = (*Filesystem)(nil)
 
-// FilesystemStore is primarily used for testing.
-// It approximates a real implementation using a set of fs.FS implementations.
-// The implementations are indexed by source and revision internally.
-// It does not truly support updates as of now as we have no way to virtualize
-// a writeable FS for Wazero. It just supplies a read-only FS and the assumes
-// no writes will be attempted.
-// When the FS interface in Wazero is available we can change this behaviour.
-type FilesystemStore struct {
-	store map[string]map[string]billy.Filesystem
+// Filesystem is primarily used for testing.
+// The implementations are indexed by revision internally.
+// It supports writes through the billyfs abstraction.
+// However, instead of proposals, these are direct writes to the underlying filesystem.
+type Filesystem struct {
+	revs containers.MapStore[string, billy.Filesystem]
 }
 
 // New constructs a new instance of FilesystemStore
-func New() *FilesystemStore {
-	return &FilesystemStore{store: map[string]map[string]billy.Filesystem{}}
+func New() *Filesystem {
+	return &Filesystem{revs: containers.MapStore[string, billy.Filesystem]{}}
 }
 
 // AddFS registers a new fs.FS to be supplied on calls to View and Update
-func (f *FilesystemStore) AddFS(source, revision string, ffs billy.Filesystem) {
-	src, ok := f.store[source]
-	if !ok {
-		src = map[string]billy.Filesystem{}
-		f.store[source] = src
-	}
-
-	src[revision] = ffs
+func (f *Filesystem) AddFS(revision string, ffs billy.Filesystem) {
+	f.revs[revision] = ffs
 }
 
 // View invokes the provided function with an FSConfig which should enforce
 // a read-only view for the requested source and revision
-func (f *FilesystemStore) View(_ context.Context, source string, revision string, fn api.ViewFunc) error {
-	fs, err := f.fs(source, revision)
+func (f *Filesystem) View(_ context.Context, revision string, fn api.ViewFunc) error {
+	fs, err := f.revs.Get(revision)
 	if err != nil {
 		return fmt.Errorf("view: %w", err)
 	}
@@ -53,25 +45,11 @@ func (f *FilesystemStore) View(_ context.Context, source string, revision string
 // Update invokes the provided function with an FSConfig which can be written to
 // Any writes performed to the target during the execution of fn will be added,
 // comitted, pushed and proposed for review on a target SCM
-func (f *FilesystemStore) Update(_ context.Context, source, revision, _ string, fn api.UpdateFunc) (*api.Result, error) {
-	fs, err := f.fs(source, revision)
+func (f *Filesystem) Update(_ context.Context, revision, _ string, fn api.UpdateFunc) (*api.Result, error) {
+	fs, err := f.revs.Get(revision)
 	if err != nil {
 		return nil, fmt.Errorf("update: %w", err)
 	}
 
 	return &api.Result{}, fn(controller.NewFSConfig(fs))
-}
-
-func (f *FilesystemStore) fs(source, revision string) (billy.Filesystem, error) {
-	src, ok := f.store[source]
-	if !ok {
-		return nil, fmt.Errorf("source not found: %q", source)
-	}
-
-	fs, ok := src[revision]
-	if !ok {
-		return nil, fmt.Errorf("revision not found: \"%s:%s\"", source, revision)
-	}
-
-	return fs, nil
 }
