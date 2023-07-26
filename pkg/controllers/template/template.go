@@ -36,7 +36,6 @@ type ResourceEncoding interface {
 // It simply organizes resources on the underlying filesystem by { namespace }/{ name }
 // encoding them using the provided marshaller.
 type Controller struct {
-	definition   *core.ResourceDefinition
 	encoding     ResourceEncoding
 	nsTmpl       *template.Template
 	resourceTmpl *template.Template
@@ -44,10 +43,9 @@ type Controller struct {
 
 // New constructs and configures a new *Controller.
 // By default it uses a JSON encoding which can be overriden via WithResourceEncoding.
-func New(def *core.ResourceDefinition, opts ...containers.Option[Controller]) *Controller {
+func New(opts ...containers.Option[Controller]) *Controller {
 	controller := &Controller{
-		definition: def,
-		encoding:   encoding.NewJSONEncoding[core.Resource](),
+		encoding: encoding.NewJSONEncoding[core.Resource](),
 		nsTmpl: template.Must(template.New("ns").
 			Funcs(funcs).
 			Parse(defaultNamespaceTmpl),
@@ -68,11 +66,6 @@ func WithResourceEncoding(e ResourceEncoding) containers.Option[Controller] {
 	return func(c *Controller) {
 		c.encoding = e
 	}
-}
-
-// Definition returns the core resource definition handled by the Controller.
-func (c *Controller) Definition() *core.ResourceDefinition {
-	return c.definition
 }
 
 func (c *Controller) Get(_ context.Context, req *controllers.GetRequest) (_ *core.Resource, err error) {

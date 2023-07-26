@@ -74,14 +74,14 @@ func serve(ctx *cli.Context) error {
 
 			switch resource.Controller.Type {
 			case config.ControllerTypeTemplate:
-				controller = template.New(def)
+				controller = template.New()
 			default:
 				return fmt.Errorf("controller type not supported: %q", resource.Controller.Type)
 			}
 
 			slog.Debug("Registering Controller", "apiVersion", def.APIVersion, "kind", def.Kind)
 
-			srv.RegisterController(k, fs, controller)
+			srv.Register(k, fs, controller, def)
 		}
 	}
 

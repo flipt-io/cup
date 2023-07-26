@@ -47,7 +47,6 @@ type Filesystem interface {
 // Controller is the core controller interface for handling interactions with a
 // single resource type.
 type Controller interface {
-	Definition() *core.ResourceDefinition
 	Get(context.Context, *controllers.GetRequest) (*core.Resource, error)
 	List(context.Context, *controllers.ListRequest) ([]*core.Resource, error)
 	Put(context.Context, *controllers.PutRequest) error
@@ -101,13 +100,12 @@ func (s *Server) addDefinition(source string, gvk string, def *core.ResourceDefi
 	src[gvk] = def
 }
 
-// RegisterController adds a new controller and definition with a particular filesystem to the server.
+// Register adds a new controller and definition with a particular filesystem to the server.
 // This may happen dynamically in the future, so it is guarded with a write lock.
-func (s *Server) RegisterController(source string, fss Filesystem, cntl Controller) {
+func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *core.ResourceDefinition) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	def := cntl.Definition()
 	for version := range def.Spec.Versions {
 		var (
 			version = version
