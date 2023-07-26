@@ -84,8 +84,8 @@ func (c *Controller) List(ctx context.Context, r *controllers.ListRequest) (reso
 	dec := json.NewDecoder(buf)
 	for err == nil {
 		var resource core.Resource
-		if err := dec.Decode(&resource); err != nil {
-			return nil, err
+		if err = dec.Decode(&resource); err != nil {
+			break
 		}
 
 		resources = append(resources, &resource)
@@ -95,7 +95,7 @@ func (c *Controller) List(ctx context.Context, r *controllers.ListRequest) (reso
 		return nil, err
 	}
 
-	return
+	return resources, nil
 }
 
 func (c *Controller) Put(ctx context.Context, r *controllers.PutRequest) (err error) {

@@ -1,0 +1,13 @@
+{
+    "apiVersion": "test.cup.flipt.io/v1alpha1",
+    "kind": "Resource",
+    "metadata": {
+        "namespace": "default",
+        "name": "foo",
+        "labels": {
+            "bar": "baz"
+        },
+        "annotations": {}
+    },
+    "spec": {}
+}

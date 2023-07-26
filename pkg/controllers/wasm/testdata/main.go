@@ -3,43 +3,61 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
+	"sort"
 
 	"go.flipt.io/cup/pkg/api/core"
 )
 
-var data = map[string]map[string]map[string]*core.Resource{
-	"Resource": map[string]map[string]*core.Resource{
-		"default": map[string]*core.Resource{
-			"foo": &core.Resource{
-				APIVersion: "test.cup.flipt.io/v1alpha1",
-				Kind:       "Resource",
-				Metadata: core.NamespacedMetadata{
-					Namespace: "default",
-					Name:      "foo",
-					Labels: map[string]string{
-						"bar": "baz",
-					},
-					Annotations: map[string]string{},
-				},
-				Spec: []byte(`{}`),
-			},
-		},
-	},
+var data = map[string]map[string]map[string]*core.Resource{}
+
+func fatal(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+}
+
+func addResource(def *core.Resource) {
+	namespaces, ok := data[def.Kind]
+	if !ok {
+		namespaces = map[string]map[string]*core.Resource{}
+		data[def.Kind] = namespaces
+	}
+
+	namespace, ok := namespaces[def.Metadata.Namespace]
+	if !ok {
+		namespace = map[string]*core.Resource{}
+		namespaces[def.Metadata.Namespace] = namespace
+	}
+
+	namespace[def.Metadata.Name] = def
 }
 
 func main() {
+	dfs := os.DirFS(".")
+	matches, err := fs.Glob(dfs, "*.json")
+	fatal(err)
+
+	for _, path := range matches {
+		fi, err := dfs.Open(path)
+		fatal(err)
+
+		var resource core.Resource
+
+		fatal(json.NewDecoder(fi).Decode(&resource))
+
+		addResource(&resource)
+
+		_ = fi.Close()
+	}
+
 	switch os.Args[1] {
 	case "get":
-		namespaces, ok := data[os.Args[2]]
-		if !ok {
-			fmt.Fprintf(os.Stderr, "unexpected kind: %q", os.Args[2])
-			os.Exit(1)
-		}
-
-		namespace, ok := namespaces[os.Args[3]]
-		if !ok {
-			fmt.Fprintf(os.Stderr, "unknown namespace: %s/%s", os.Args[2], os.Args[3])
+		namespace, err := getNamespace(os.Args[2], os.Args[3])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, err.Error())
 			os.Exit(2)
 		}
 
@@ -55,8 +73,40 @@ func main() {
 		}
 
 		return
+	case "list":
+		namespace, err := getNamespace(os.Args[2], os.Args[3])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, err.Error())
+			os.Exit(2)
+		}
+
+		var names []string
+		for name := range namespace {
+			names = append(names, name)
+		}
+
+		sort.Strings(names)
+
+		enc := json.NewEncoder(os.Stdout)
+		for _, name := range names {
+			enc.Encode(namespace[name])
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "unexpected command %q", os.Args[1])
 		os.Exit(1)
 	}
+}
+
+func getNamespace(kind, namespace string) (map[string]*core.Resource, error) {
+	namespaces, ok := data[kind]
+	if !ok {
+		return nil, fmt.Errorf("unexpected kind: %q", kind)
+	}
+
+	ns, ok := namespaces[namespace]
+	if !ok {
+		return nil, fmt.Errorf("unknown namespace: %s/%s", kind, namespace)
+	}
+
+	return ns, nil
 }

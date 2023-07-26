@@ -61,6 +61,56 @@ func Test_Controller_Get(t *testing.T) {
 	}, resource)
 }
 
+func Test_Controller_List(t *testing.T) {
+	wasm, skip := compileTestController(t)
+	if skip {
+		return
+	}
+
+	ctx := context.Background()
+	controller := New(ctx, wasm)
+
+	resources, err := controller.List(ctx, &controllers.ListRequest{
+		FS: testdataFS(t),
+		Request: controllers.Request{
+			Group:     "test.cup.flipt.io",
+			Version:   "v1alpha1",
+			Kind:      "Resource",
+			Namespace: "default",
+		},
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []*core.Resource{
+		{
+			APIVersion: "test.cup.flipt.io/v1alpha1",
+			Kind:       "Resource",
+			Metadata: core.NamespacedMetadata{
+				Namespace: "default",
+				Name:      "bar",
+				Labels: map[string]string{
+					"baz": "bar",
+				},
+				Annotations: map[string]string{},
+			},
+			Spec: []byte(`{}`),
+		},
+		{
+			APIVersion: "test.cup.flipt.io/v1alpha1",
+			Kind:       "Resource",
+			Metadata: core.NamespacedMetadata{
+				Namespace: "default",
+				Name:      "foo",
+				Labels: map[string]string{
+					"bar": "baz",
+				},
+				Annotations: map[string]string{},
+			},
+			Spec: []byte(`{}`),
+		},
+	}, resources)
+}
+
 func compileTestController(t *testing.T) ([]byte, bool) {
 	t.Helper()
 
