@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.flipt.io/cup/pkg/containers"
-	"go.flipt.io/cup/pkg/controller"
+	"go.flipt.io/cup/pkg/controllers"
 	"go.flipt.io/cup/pkg/fs/git"
 	giteascm "go.flipt.io/cup/pkg/fs/git/scm/gitea"
 	"golang.org/x/exp/slog"
@@ -73,7 +73,7 @@ func Test_Filesystem_Update(t *testing.T) {
 		return
 	}
 
-	result, err := fss.Update(ctx, "main", "feat: add `baz` resource", func(f controller.FSConfig) error {
+	result, err := fss.Update(ctx, "main", "feat: add `baz` resource", func(f controllers.FSConfig) error {
 		fi, err := f.ToFS().Create(bazPath)
 		if err != nil {
 			return err
