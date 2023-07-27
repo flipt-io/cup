@@ -76,47 +76,9 @@ func definitions(cfg config, client *http.Client) error {
 }
 
 func list(cfg config, client *http.Client, typ string) error {
-	var group, version, kind string
-
-	parts := strings.SplitN(typ, "/", 3)
-	switch len(parts) {
-	case 3:
-		group, version, kind = parts[0], parts[1], parts[2]
-	case 2, 1:
-		kind = parts[0]
-		if len(parts) > 1 {
-			group, kind = parts[0], parts[1]
-		}
-
-		defs, err := getDefintions(cfg, client)
-		if err != nil {
-			return err
-		}
-
-		var found bool
-		for _, def := range defs {
-			if group == "" || def.Spec.Group == group {
-				if found = (def.Names.Kind == kind || def.Names.Plural == kind); found {
-					// TODO(georgemac): we need a property for current returned version
-					for version = range def.Spec.Versions {
-					}
-
-					if def.Names.Kind == kind {
-						kind = def.Names.Plural
-					}
-
-					if group == "" {
-						group = def.Spec.Group
-					}
-
-					break
-				}
-			}
-		}
-
-		if !found {
-			return fmt.Errorf("unknown resource kind: %q", typ)
-		}
+	group, version, kind, err := getGVK(cfg, client, typ)
+	if err != nil {
+		return fmt.Errorf("list: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("%s/apis/%s/%s/%s/%s/namespaces/%s",
@@ -160,6 +122,51 @@ func list(cfg config, client *http.Client, typ string) error {
 	}
 
 	return wr.Flush()
+}
+
+func getGVK(cfg config, client *http.Client, typ string) (group, version, kind string, err error) {
+	parts := strings.SplitN(typ, "/", 3)
+	switch len(parts) {
+	case 3:
+		group, version, kind = parts[0], parts[1], parts[2]
+	case 2, 1:
+		kind = parts[0]
+		if len(parts) > 1 {
+			group, kind = parts[0], parts[1]
+		}
+
+		defs, err := getDefintions(cfg, client)
+		if err != nil {
+			return group, version, kind, err
+		}
+
+		var found bool
+		for _, def := range defs {
+			if group == "" || def.Spec.Group == group {
+				if found = (def.Names.Kind == kind || def.Names.Plural == kind); found {
+					// TODO(georgemac): we need a property for current returned version
+					for version = range def.Spec.Versions {
+					}
+
+					if def.Names.Kind == kind {
+						kind = def.Names.Plural
+					}
+
+					if group == "" {
+						group = def.Spec.Group
+					}
+
+					break
+				}
+			}
+		}
+
+		if !found {
+			return group, version, kind, fmt.Errorf("unknown resource kind: %q", typ)
+		}
+	}
+
+	return
 }
 
 func getDefintions(cfg config, client *http.Client) (map[string]*core.ResourceDefinition, error) {
