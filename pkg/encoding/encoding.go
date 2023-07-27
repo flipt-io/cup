@@ -38,8 +38,6 @@ type TypedEncoder[T any] interface {
 
 type EncodingBuilder[B AnyEncodingBuilder, T any] struct {
 	b B
-	Encoder[B, T]
-	Decoder[B, T]
 }
 
 func (e EncodingBuilder[B, T]) Extension() string {
