@@ -232,16 +232,26 @@ func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *c
 	}
 }
 
+type Source struct {
+	Name      string `json:"name"`
+	Resources int    `json:"resources"`
+}
+
 func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var sources []string
-	for src := range s.sources {
-		sources = append(sources, src)
+	var sources []Source
+	for name, src := range s.sources {
+		sources = append(sources, Source{
+			Name:      name,
+			Resources: len(src),
+		})
 	}
 
-	sort.Strings(sources)
+	sort.Slice(sources, func(i, j int) bool {
+		return sources[i].Name < sources[j].Name
+	})
 
 	if err := json.NewEncoder(w).Encode(&sources); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
