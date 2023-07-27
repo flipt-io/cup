@@ -41,9 +41,10 @@ func main() {
 				Usage: "Access the resource API of a cupd instance",
 				Subcommands: []*cli.Command{
 					{
-						Name:    "sources",
-						Aliases: []string{"s"},
-						Usage:   "List the available sources",
+						Name:     "sources",
+						Aliases:  []string{"s"},
+						Category: "discovery",
+						Usage:    "List the available sources",
 						Action: func(ctx *cli.Context) error {
 							cfg, err := parseConfig(ctx)
 							if err != nil {
@@ -54,9 +55,10 @@ func main() {
 						},
 					},
 					{
-						Name:    "definitions",
-						Aliases: []string{"d"},
-						Usage:   "List the available resource definitions for a target source",
+						Name:     "definitions",
+						Aliases:  []string{"d"},
+						Category: "discovery",
+						Usage:    "List the available resource definitions for a target source",
 						Action: func(ctx *cli.Context) error {
 							cfg, err := parseConfig(ctx)
 							if err != nil {
@@ -67,9 +69,10 @@ func main() {
 						},
 					},
 					{
-						Name:    "list",
-						Aliases: []string{"l"},
-						Usage:   "List the available resources of a given definition for the target source",
+						Name:     "list",
+						Aliases:  []string{"l"},
+						Category: "resource",
+						Usage:    "List the available resources of a given definition for the target source",
 						Action: func(ctx *cli.Context) error {
 							cfg, err := parseConfig(ctx)
 							if err != nil {
