@@ -58,6 +58,7 @@ func configCommand() *cli.Command {
 
 type config struct {
 	CurrentContext string              `json:"current_context"`
+	Output         string              `json:"-"`
 	Contexts       map[string]*context `json:"contexts"`
 }
 
@@ -109,6 +110,8 @@ func parseConfig(ctx *cli.Context) (config, error) {
 	if err := json.NewDecoder(fi).Decode(&conf); err != nil {
 		return config{}, err
 	}
+
+	conf.Output = ctx.String("output")
 
 	return conf, nil
 }

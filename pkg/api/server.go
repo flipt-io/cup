@@ -172,14 +172,19 @@ func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *c
 
 		// put kind
 		s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// TODO(georgemac): derive a suitable message
-			var message string
-			result, err := fss.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
-				var resource core.Resource
-				if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
-					return err
-				}
+			var resource core.Resource
+			if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
+				http.Error(w, err.Error(), http.StatusBadGateway)
+				return
+			}
 
+			message := fmt.Sprintf(
+				"feat: update %s/%s %s/%s",
+				resource.APIVersion, resource.Kind,
+				resource.Metadata.Namespace, resource.Metadata.Name,
+			)
+
+			result, err := fss.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
 				return cntl.Put(r.Context(), &controllers.PutRequest{
 					Request: controllers.Request{
 						Group:     def.Spec.Group,
@@ -205,18 +210,26 @@ func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *c
 
 		// delete kind
 		s.mux.Delete(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// TODO(georgemac): derive a suitable message
-			var message string
+			var (
+				namespace = chi.URLParamFromCtx(r.Context(), "ns")
+				name      = chi.URLParamFromCtx(r.Context(), "name")
+				message   = fmt.Sprintf(
+					"feat: delete %s/%s/%s %s/%s",
+					def.Spec.Group, version, def.Names.Plural,
+					namespace, name,
+				)
+			)
+
 			result, err := fss.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
 				return cntl.Delete(r.Context(), &controllers.DeleteRequest{
 					Request: controllers.Request{
 						Group:     def.Spec.Group,
 						Version:   version,
 						Kind:      def.Names.Kind,
-						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+						Namespace: namespace,
 					},
 					FSConfig: f,
-					Name:     chi.URLParamFromCtx(r.Context(), "name"),
+					Name:     name,
 				})
 			})
 			if err != nil {

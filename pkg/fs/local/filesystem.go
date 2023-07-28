@@ -32,5 +32,8 @@ func (f *Filesystem) View(_ context.Context, revision string, fn api.ViewFunc) e
 // Any writes performed to the target during the execution of fn will be added,
 // comitted, pushed and proposed for review on a target SCM.
 func (f *Filesystem) Update(_ context.Context, revision string, message string, fn api.UpdateFunc) (*api.Result, error) {
-	return &api.Result{}, fn(controllers.NewFSConfig(osfs.New(f.path)))
+	return &api.Result{}, fn(controllers.FSConfig{
+		FS:  osfs.New(f.path),
+		Dir: &f.path,
+	})
 }

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -75,10 +77,10 @@ func definitions(cfg config, client *http.Client) error {
 	return wr.Flush()
 }
 
-func list(cfg config, client *http.Client, typ string) error {
+func get(cfg config, client *http.Client, typ string, args ...string) error {
 	group, version, kind, err := getGVK(cfg, client, typ)
 	if err != nil {
-		return fmt.Errorf("list: %w", err)
+		return fmt.Errorf("get: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("%s/apis/%s/%s/%s/%s/namespaces/%s",
@@ -89,6 +91,11 @@ func list(cfg config, client *http.Client, typ string) error {
 		kind,
 		cfg.Namespace(),
 	)
+
+	if len(args) == 1 {
+		// get with a single argument will use get instead of list
+		endpoint += "/" + args[0]
+	}
 
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -109,19 +116,141 @@ func list(cfg config, client *http.Client, typ string) error {
 		return fmt.Errorf("unexpected status: %q", resp.Status)
 	}
 
-	enc := encoding.NewJSONEncoding[core.Resource]()
-	resources, err := encoding.DecodeAll(enc.NewDecoder(resp.Body))
+	dec := encoding.NewJSONDecoder[core.Resource](resp.Body)
+	resources, err := encoding.DecodeAll[core.Resource](dec)
 	if err != nil {
 		return fmt.Errorf("decoding resources: %w", err)
 	}
 
-	wr := writer()
-	fmt.Fprintln(wr, "NAMESPACE\tNAME\t")
-	for _, resource := range resources {
-		fmt.Fprintf(wr, "%s\t%s\t\n", resource.Metadata.Namespace, resource.Metadata.Name)
+	var out encoding.TypedEncoder[core.Resource]
+	switch cfg.Output {
+	case "table":
+		table := newTableEncoding(
+			func(r *core.Resource) []string {
+				return []string{r.Metadata.Namespace, r.Metadata.Name}
+			},
+			"NAMESPACE", "NAME",
+		)
+
+		out = table
+
+		defer table.Flush()
+	case "json":
+		enc := encoding.NewJSONEncoder[core.Resource](os.Stdout)
+		enc.SetIndent("", "  ")
+		out = enc
+	default:
+		return fmt.Errorf("unexpected output type: %q", cfg.Output)
 	}
 
-	return wr.Flush()
+	for _, resource := range resources {
+		// filter by name client side
+		if len(args) > 0 {
+			var found bool
+			for _, name := range args {
+				if found = resource.Metadata.Name == name; found {
+					break
+				}
+			}
+
+			if !found {
+				continue
+			}
+		}
+
+		if err := out.Encode(resource); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func apply(cfg config, client *http.Client, source string) (err error) {
+	var (
+		buf = &bytes.Buffer{}
+		rd  = os.Stdin
+	)
+
+	if source != "-" {
+		rd, err = os.Open(source)
+		if err != nil {
+			return
+		}
+	}
+
+	resource, err := encoding.
+		NewJSONDecoder[core.Resource](io.TeeReader(rd, buf)).
+		Decode()
+	if err != nil {
+		return err
+	}
+
+	defs, err := getDefintions(cfg, client)
+	if err != nil {
+		return err
+	}
+
+	gvk := path.Join(resource.APIVersion, resource.Kind)
+	def, ok := defs[gvk]
+	if !ok {
+		return fmt.Errorf("unexpected resource kind: %q", gvk)
+	}
+
+	group, version, _ := strings.Cut(resource.APIVersion, "/")
+	endpoint := fmt.Sprintf("%s/apis/%s/%s/%s/%s/namespaces/%s/%s",
+		cfg.Address(),
+		cfg.Source(),
+		group,
+		version,
+		def.Names.Plural,
+		resource.Metadata.Namespace,
+		resource.Metadata.Name,
+	)
+
+	req, err := http.NewRequest(http.MethodPut, endpoint, buf)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status: %q", resp.Status)
+	}
+
+	return nil
+}
+
+type tableEncoding[T any] struct {
+	*tabwriter.Writer
+
+	headers       []string
+	rowFn         func(*T) []string
+	headerPrinted bool
+}
+
+func newTableEncoding[T any](rowFn func(*T) []string, headers ...string) *tableEncoding[T] {
+	return &tableEncoding[T]{Writer: writer(), rowFn: rowFn, headers: headers}
+}
+
+func (e *tableEncoding[T]) Encode(t *T) error {
+	if !e.headerPrinted {
+		fmt.Fprintln(e, strings.Join(e.headers, "\t")+"\t")
+		e.headerPrinted = true
+	}
+
+	_, err := fmt.Fprintln(e, strings.Join(e.rowFn(t), "\t")+"\t")
+
+	return err
 }
 
 func getGVK(cfg config, client *http.Client, typ string) (group, version, kind string, err error) {

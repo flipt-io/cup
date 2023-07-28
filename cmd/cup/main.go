@@ -26,6 +26,11 @@ func main() {
 				Aliases: []string{"c"},
 				Value:   path.Join(dir, "config.json"),
 			},
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{"o"},
+				Value:   "table",
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -69,17 +74,44 @@ func main() {
 						},
 					},
 					{
-						Name:     "list",
-						Aliases:  []string{"l"},
+						Name:     "get",
+						Aliases:  []string{"g"},
 						Category: "resource",
-						Usage:    "List the available resources of a given definition for the target source",
+						Usage:    "Get one or more resources",
 						Action: func(ctx *cli.Context) error {
 							cfg, err := parseConfig(ctx)
 							if err != nil {
 								return err
 							}
 
-							return list(cfg, http.DefaultClient, ctx.Args().First())
+							return get(cfg,
+								http.DefaultClient,
+								ctx.Args().First(),
+								ctx.Args().Tail()...)
+						},
+					},
+					{
+						Name:     "apply",
+						Category: "resource",
+						Usage:    "Put a resource from file on stdin",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:        "f",
+								Value:       "-",
+								Usage:       "Path to source to apply to target cupd",
+								DefaultText: "(- STDIN)",
+							},
+						},
+						Action: func(ctx *cli.Context) error {
+							cfg, err := parseConfig(ctx)
+							if err != nil {
+								return err
+							}
+
+							return apply(cfg,
+								http.DefaultClient,
+								ctx.String("f"),
+							)
 						},
 					},
 				},
