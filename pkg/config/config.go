@@ -67,9 +67,29 @@ const (
 	SCMTypeGitHub = SCMType("github")
 )
 
+type URL struct {
+	*url.URL
+}
+
+func (u *URL) UnmarshalJSON(v []byte) error {
+	if u.URL == nil {
+		u.URL = &url.URL{}
+	}
+
+	if len(v) < 2 {
+		return nil
+	}
+
+	return u.URL.UnmarshalBinary(v[1 : len(v)-1])
+}
+
+func (u *URL) MarshalJSON() ([]byte, error) {
+	return u.URL.MarshalBinary()
+}
+
 type GitSource struct {
-	URL *url.URL `json:"url"`
-	SCM SCMType  `json:"scm"`
+	URL *URL    `json:"url"`
+	SCM SCMType `json:"scm"`
 }
 
 func (s *GitSource) Credentials() (user, pass string) {
@@ -82,7 +102,7 @@ func (s *GitSource) Host() string {
 }
 
 func (s *GitSource) OwnerRepo() (owner, repo string, err error) {
-	parts := strings.SplitN(s.URL.Path, "/", 2)
+	parts := strings.SplitN(s.URL.Path, "/", 3)
 	if len(parts) < 3 {
 		return "", "", fmt.Errorf("unexpected path: %q", s.URL.Path)
 	}
@@ -137,4 +157,5 @@ type TemplateController struct {
 }
 
 type WASMController struct {
+	Executable string `json:"executable"`
 }

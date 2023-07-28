@@ -45,7 +45,7 @@ type Controller struct {
 // By default it uses a JSON encoding which can be overriden via WithResourceEncoding.
 func New(opts ...containers.Option[Controller]) *Controller {
 	controller := &Controller{
-		encoding: encoding.NewJSONEncoding[core.Resource](),
+		encoding: &encoding.JSONEncoding[core.Resource]{},
 		nsTmpl: template.Must(template.New("ns").
 			Funcs(funcs).
 			Parse(defaultNamespaceTmpl),
