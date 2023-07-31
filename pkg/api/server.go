@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	"github.com/oklog/ulid/v2"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/controllers"
@@ -73,6 +74,7 @@ func NewServer() (*Server, error) {
 	}
 
 	s.mux.Use(middleware.Logger)
+	s.mux.Use(cors.AllowAll().Handler)
 
 	s.mux.Get("/apis", s.handleSources)
 	s.mux.Get("/apis/{source}", s.handleSourceDefinitions)

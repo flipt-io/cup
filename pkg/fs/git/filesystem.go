@@ -89,7 +89,7 @@ func NewFilesystem(ctx context.Context, scm SCM, url string, opts ...containers.
 		logger:   slog.With(slog.String("repository", url)),
 		url:      url,
 		scm:      scm,
-		interval: 30 * time.Second,
+		interval: 10 * time.Second,
 		notify:   make(chan struct{}, 1),
 	}
 	containers.ApplyAll(fs, opts...)

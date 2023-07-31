@@ -42,78 +42,71 @@ func main() {
 				},
 			},
 			{
-				Name:  "ctl",
-				Usage: "Access the resource API of a cupd instance",
-				Subcommands: []*cli.Command{
-					{
-						Name:     "sources",
-						Aliases:  []string{"s"},
-						Category: "discovery",
-						Usage:    "List the available sources",
-						Action: func(ctx *cli.Context) error {
-							cfg, err := parseConfig(ctx)
-							if err != nil {
-								return err
-							}
+				Name:     "sources",
+				Aliases:  []string{"srcs"},
+				Category: "discovery",
+				Usage:    "List the available sources",
+				Action: func(ctx *cli.Context) error {
+					cfg, err := parseConfig(ctx)
+					if err != nil {
+						return err
+					}
 
-							return sources(cfg, http.DefaultClient)
-						},
-					},
-					{
-						Name:     "definitions",
-						Aliases:  []string{"d"},
-						Category: "discovery",
-						Usage:    "List the available resource definitions for a target source",
-						Action: func(ctx *cli.Context) error {
-							cfg, err := parseConfig(ctx)
-							if err != nil {
-								return err
-							}
+					return sources(cfg, http.DefaultClient)
+				},
+			},
+			{
+				Name:     "definitions",
+				Aliases:  []string{"defs"},
+				Category: "discovery",
+				Usage:    "List the available resource definitions for a target source",
+				Action: func(ctx *cli.Context) error {
+					cfg, err := parseConfig(ctx)
+					if err != nil {
+						return err
+					}
 
-							return definitions(cfg, http.DefaultClient)
-						},
-					},
-					{
-						Name:     "get",
-						Aliases:  []string{"g"},
-						Category: "resource",
-						Usage:    "Get one or more resources",
-						Action: func(ctx *cli.Context) error {
-							cfg, err := parseConfig(ctx)
-							if err != nil {
-								return err
-							}
+					return definitions(cfg, http.DefaultClient)
+				},
+			},
+			{
+				Name:     "get",
+				Category: "resource",
+				Usage:    "Get one or more resources",
+				Action: func(ctx *cli.Context) error {
+					cfg, err := parseConfig(ctx)
+					if err != nil {
+						return err
+					}
 
-							return get(cfg,
-								http.DefaultClient,
-								ctx.Args().First(),
-								ctx.Args().Tail()...)
-						},
+					return get(cfg,
+						http.DefaultClient,
+						ctx.Args().First(),
+						ctx.Args().Tail()...)
+				},
+			},
+			{
+				Name:     "apply",
+				Category: "resource",
+				Usage:    "Put a resource from file on stdin",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "f",
+						Value:       "-",
+						Usage:       "Path to source to apply to target cupd",
+						DefaultText: "(- STDIN)",
 					},
-					{
-						Name:     "apply",
-						Category: "resource",
-						Usage:    "Put a resource from file on stdin",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:        "f",
-								Value:       "-",
-								Usage:       "Path to source to apply to target cupd",
-								DefaultText: "(- STDIN)",
-							},
-						},
-						Action: func(ctx *cli.Context) error {
-							cfg, err := parseConfig(ctx)
-							if err != nil {
-								return err
-							}
+				},
+				Action: func(ctx *cli.Context) error {
+					cfg, err := parseConfig(ctx)
+					if err != nil {
+						return err
+					}
 
-							return apply(cfg,
-								http.DefaultClient,
-								ctx.String("f"),
-							)
-						},
-					},
+					return apply(cfg,
+						http.DefaultClient,
+						ctx.String("f"),
+					)
 				},
 			},
 		},
