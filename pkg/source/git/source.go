@@ -22,7 +22,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-var _ api.Source = (*Filesystem)(nil)
+var _ api.Source = (*Source)(nil)
 
 // Proposal is the internal representation of what becomes a pull or merge request
 // on a target SCM.
@@ -45,11 +45,11 @@ type SCM interface {
 	Propose(context.Context, Proposal) (ProposalResponse, error)
 }
 
-// FilesystemStore is an implementation of api.FilesystemStore
+// Source is an implementation of api.Source
 // This implementation is backed by a Git repository and it tracks an upstream reference.
 // When subscribing to this source, the upstream reference is tracked
 // by polling the upstream on a configurable interval.
-type Filesystem struct {
+type Source struct {
 	logger  *slog.Logger
 	repo    *git.Repository
 	storage *memory.Storage
@@ -67,25 +67,25 @@ type Filesystem struct {
 
 // WithPollInterval configures the interval in which origin is polled to
 // discover any updates to the target reference.
-func WithPollInterval(tick time.Duration) containers.Option[Filesystem] {
-	return func(s *Filesystem) {
+func WithPollInterval(tick time.Duration) containers.Option[Source] {
+	return func(s *Source) {
 		s.interval = tick
 	}
 }
 
 // WithAuth returns an option which configures the auth method used
 // by the provided source.
-func WithAuth(auth transport.AuthMethod) containers.Option[Filesystem] {
-	return func(s *Filesystem) {
+func WithAuth(auth transport.AuthMethod) containers.Option[Source] {
+	return func(s *Source) {
 		s.auth = auth
 	}
 }
 
-// NewFilesystem constructs and configures a Git backend Filesystem.
+// NewSource constructs and configures a Git backend Source.
 // The implementation uses the connection and credential details provided to support
 // view and update requests for use in the api server.
-func NewFilesystem(ctx context.Context, scm SCM, url string, opts ...containers.Option[Filesystem]) (_ *Filesystem, err error) {
-	fs := &Filesystem{
+func NewSource(ctx context.Context, scm SCM, url string, opts ...containers.Option[Source]) (_ *Source, err error) {
+	fs := &Source{
 		logger:   slog.With(slog.String("repository", url)),
 		url:      url,
 		scm:      scm,
@@ -110,7 +110,7 @@ func NewFilesystem(ctx context.Context, scm SCM, url string, opts ...containers.
 
 // View builds a new fs.FS based on the configure Git remote and reference.
 // It call the provided function with the derived fs.FS.
-func (s *Filesystem) View(ctx context.Context, rev string, fn api.ViewFunc) error {
+func (s *Source) View(ctx context.Context, rev string, fn api.ViewFunc) error {
 	hash, err := s.resolve(rev)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (s *Filesystem) View(ctx context.Context, rev string, fn api.ViewFunc) erro
 // Any changes made during the function call to the underlying worktree are added commit and pushed to the
 // target Git repository.
 // Once pushed a proposal is made on the configured SCM.
-func (s *Filesystem) Update(ctx context.Context, rev, message string, fn api.UpdateFunc) (*api.Result, error) {
+func (s *Source) Update(ctx context.Context, rev, message string, fn api.UpdateFunc) (*api.Result, error) {
 	hash, err := s.resolve(rev)
 	if err != nil {
 		return nil, err
@@ -233,7 +233,7 @@ func (s *Filesystem) Update(ctx context.Context, rev, message string, fn api.Upd
 	return result, nil
 }
 
-func (s *Filesystem) resolve(r string) (plumbing.Hash, error) {
+func (s *Source) resolve(r string) (plumbing.Hash, error) {
 	if plumbing.IsHash(r) {
 		return plumbing.NewHash(r), nil
 	}
@@ -246,7 +246,7 @@ func (s *Filesystem) resolve(r string) (plumbing.Hash, error) {
 	return ref.Hash(), nil
 }
 
-func (s *Filesystem) pollRefs(ctx context.Context) {
+func (s *Source) pollRefs(ctx context.Context) {
 	ticker := time.NewTicker(s.interval)
 	for {
 		select {

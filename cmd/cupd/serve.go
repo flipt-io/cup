@@ -56,7 +56,7 @@ func serve(ctx *cli.Context) error {
 			return fmt.Errorf("scm type not supported: %q", src.Git.SCM)
 		}
 
-		fs, err = git.NewFilesystem(ctx.Context, scm, src.Git.URL.String(), git.WithAuth(
+		fs, err = git.NewSource(ctx.Context, scm, src.Git.URL.String(), git.WithAuth(
 			&githttp.BasicAuth{
 				Username: user,
 				Password: pass,

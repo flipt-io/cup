@@ -19,15 +19,15 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// ViewFunc is a function provided to FilesystemStore.View.
-// It is provided with a read-only view of the target filesystem.
+// ViewFunc is a function provided to Source.View.
+// It is provided with a read-only view of the target source.
 type ViewFunc func(fs.FS) error
 
-// UpdateFunc is a function passed to a FilesystemStore implementation to be invoked
+// UpdateFunc is a function passed to a Source implementation to be invoked
 // over a provided FSConfig in a call to Update.
 type UpdateFunc func(controllers.FSConfig) error
 
-// Result is the result of performing an update on a target FilesystemStore.
+// Result is the result of performing an update on a target Source.
 type Result struct {
 	ID ulid.ULID
 }

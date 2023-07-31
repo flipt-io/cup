@@ -25,9 +25,9 @@ import (
 
 var gitRepoURL = os.Getenv("TEST_GIT_REPO_URL")
 
-func Test_Filesystem_View(t *testing.T) {
+func Test_Source_View(t *testing.T) {
 	ctx := context.Background()
-	fss, _, skipped := testFilesystem(t, ctx)
+	fss, _, skipped := testSource(t, ctx)
 	if skipped {
 		return
 	}
@@ -65,10 +65,10 @@ func Test_Filesystem_View(t *testing.T) {
 	assert.Equal(t, testdataContents, files)
 }
 
-func Test_Filesystem_Update(t *testing.T) {
+func Test_Source_Update(t *testing.T) {
 	ctx := context.Background()
 
-	fss, scm, skipped := testFilesystem(t, ctx)
+	fss, scm, skipped := testSource(t, ctx)
 	if skipped {
 		return
 	}
@@ -91,7 +91,7 @@ func Test_Filesystem_Update(t *testing.T) {
 
 	require.NoError(t, scm.Merge(ctx, result.ID))
 
-	// attempt to block until the Filesystem gets an update
+	// attempt to block until the Source gets an update
 	git.WaitForUpdate(t, fss, 30*time.Second)
 
 	files := map[string][]byte{}
@@ -134,7 +134,7 @@ type scm interface {
 	Merge(context.Context, ulid.ULID) error
 }
 
-func testFilesystem(t *testing.T, ctx context.Context, opts ...containers.Option[git.Filesystem]) (*git.Filesystem, scm, bool) {
+func testSource(t *testing.T, ctx context.Context, opts ...containers.Option[git.Source]) (*git.Source, scm, bool) {
 	t.Helper()
 
 	if gitRepoURL == "" {
@@ -161,8 +161,8 @@ func testFilesystem(t *testing.T, ctx context.Context, opts ...containers.Option
 
 	scm := giteascm.New(client, owner, strings.TrimSuffix(repo, ".git"))
 
-	fs, err := git.NewFilesystem(ctx, scm, gitRepoURL,
-		append([]containers.Option[git.Filesystem]{
+	fs, err := git.NewSource(ctx, scm, gitRepoURL,
+		append([]containers.Option[git.Source]{
 			git.WithPollInterval(5 * time.Second),
 			git.WithAuth(&http.BasicAuth{
 				Username: "root",
