@@ -42,20 +42,6 @@ func main() {
 				},
 			},
 			{
-				Name:     "sources",
-				Aliases:  []string{"srcs"},
-				Category: "discovery",
-				Usage:    "List the available sources",
-				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
-					if err != nil {
-						return err
-					}
-
-					return sources(cfg, http.DefaultClient)
-				},
-			},
-			{
 				Name:     "definitions",
 				Aliases:  []string{"defs"},
 				Category: "discovery",

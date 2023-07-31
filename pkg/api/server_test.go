@@ -40,16 +40,16 @@ var testDef = &core.ResourceDefinition{
 	},
 }
 
-func Test_Server_Source(t *testing.T) {
+func Test_Server_Definitions(t *testing.T) {
 	var (
 		fss   = mem.New()
 		cntrl = template.New()
 	)
 
-	server, err := api.NewServer()
+	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	server.Register("cup", fss, cntrl, testDef)
+	server.Register(cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -59,36 +59,11 @@ func Test_Server_Source(t *testing.T) {
 
 	defer resp.Body.Close()
 
-	var sources []string
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&sources))
-
-	assert.Equal(t, []string{"cup"}, sources)
-}
-
-func Test_Server_SourceDefinitions(t *testing.T) {
-	var (
-		fss   = mem.New()
-		cntrl = template.New()
-	)
-
-	server, err := api.NewServer()
-	require.NoError(t, err)
-
-	server.Register("cup", fss, cntrl, testDef)
-
-	srv := httptest.NewServer(server)
-	t.Cleanup(srv.Close)
-
-	resp, err := http.Get(srv.URL + "/apis/cup")
-	require.NoError(t, err)
-
-	defer resp.Body.Close()
-
 	var definitions map[string]*core.ResourceDefinition
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&definitions))
 
 	assert.Equal(t, map[string]*core.ResourceDefinition{
-		"test.cup.flipt.io/v1alpha1/Resource": testDef,
+		"test.cup.flipt.io/v1alpha1/resources": testDef,
 	}, definitions)
 }
 
@@ -98,15 +73,15 @@ func Test_Server_Get(t *testing.T) {
 
 	cntrl := template.New()
 
-	server, err := api.NewServer()
+	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	server.Register("cup", fss, cntrl, testDef)
+	server.Register(cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
 
-	path := "/apis/cup/test.cup.flipt.io/v1alpha1/resources/namespaces/default/foo"
+	path := "/apis/test.cup.flipt.io/v1alpha1/namespaces/default/resources/foo"
 	resp, err := http.Get(srv.URL + path)
 	require.NoError(t, err)
 
@@ -135,23 +110,23 @@ func Test_Server_List(t *testing.T) {
 	fss.AddFS("main", osfs.New("testdata"))
 	cntrl := template.New()
 
-	server, err := api.NewServer()
+	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	server.Register("cup", fss, cntrl, testDef)
+	server.Register(cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
 
-	path := "/apis/cup/test.cup.flipt.io/v1alpha1/resources/namespaces/default"
+	path := "/apis/test.cup.flipt.io/v1alpha1/namespaces/default/resources"
 	resp, err := http.Get(srv.URL + path)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
 
-	decoder := encoding.NewJSONEncoding[core.Resource]().NewDecoder(resp.Body)
+	decoder := encoding.NewJSONDecoder[core.Resource](resp.Body)
 
-	resources, err := encoding.DecodeAll(decoder)
+	resources, err := encoding.DecodeAll[core.Resource](decoder)
 	require.NoError(t, err)
 
 	assert.Equal(t, []*core.Resource{
@@ -191,14 +166,14 @@ func Test_Server_Put(t *testing.T) {
 
 	cntrl := template.New()
 
-	server, err := api.NewServer()
+	server, err := api.NewServer(fss)
 	require.NoError(t, err)
-	server.Register("cup", fss, cntrl, testDef)
+	server.Register(cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
 
-	path := "/apis/cup/test.cup.flipt.io/v1alpha1/resources/namespaces/default/baz"
+	path := "/apis/test.cup.flipt.io/v1alpha1/namespaces/default/resources/baz"
 	body := bytes.NewReader([]byte(bazPayload))
 
 	req, err := http.NewRequest("PUT", srv.URL+path, body)
@@ -250,15 +225,15 @@ func Test_Server_Delete(t *testing.T) {
 	fss.AddFS("main", fs)
 	cntrl := template.New()
 
-	server, err := api.NewServer()
+	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	server.Register("cup", fss, cntrl, testDef)
+	server.Register(cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
 
-	path := "/apis/cup/test.cup.flipt.io/v1alpha1/resources/namespaces/default/baz"
+	path := "/apis/test.cup.flipt.io/v1alpha1/namespaces/default/resources/baz"
 	req, err := http.NewRequest("DELETE", srv.URL+path, nil)
 	require.NoError(t, err)
 

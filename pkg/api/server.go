@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"net/http"
 	"path"
-	"sort"
 	"sync"
 
 	"github.com/go-chi/chi/middleware"
@@ -15,6 +14,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/oklog/ulid/v2"
 	"go.flipt.io/cup/pkg/api/core"
+	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controllers"
 	"golang.org/x/exp/slog"
 )
@@ -32,10 +32,10 @@ type Result struct {
 	ID ulid.ULID
 }
 
-// Filesystem is the abstraction around a target source filesystem.
+// Source is the abstraction around a target source filesystem.
 // It is used by the API server to both read and propose changes based on the
 // operations requested.
-type Filesystem interface {
+type Source interface {
 	// View invokes the provided function with an fs.FS which should enforce
 	// a read-only view for the requested source and revision
 	View(_ context.Context, revision string, fn ViewFunc) error
@@ -57,27 +57,28 @@ type Controller interface {
 // Server is the core api.Server for cupd.
 // It handles exposing all the sources, definitions and the resources themselves.
 type Server struct {
-	mu      sync.RWMutex
-	mux     *chi.Mux
-	sources map[string]map[string]*core.ResourceDefinition
-	rev     string
+	mu          sync.RWMutex
+	mux         *chi.Mux
+	fs          Source
+	definitions containers.MapStore[string, *core.ResourceDefinition]
+	rev         string
 }
 
 // NewServer constructs and configures a new instance of *api.Server
 // It uses the provided controller and filesystem store to build and serve
 // requests for sources, definitions and resources.
-func NewServer() (*Server, error) {
+func NewServer(fs Source) (*Server, error) {
 	s := &Server{
-		mux:     chi.NewMux(),
-		sources: map[string]map[string]*core.ResourceDefinition{},
-		rev:     "main",
+		mux:         chi.NewMux(),
+		fs:          fs,
+		definitions: containers.MapStore[string, *core.ResourceDefinition]{},
+		rev:         "main",
 	}
 
 	s.mux.Use(middleware.Logger)
 	s.mux.Use(cors.AllowAll().Handler)
 
-	s.mux.Get("/apis", s.handleSources)
-	s.mux.Get("/apis/{source}", s.handleSourceDefinitions)
+	s.mux.Get("/apis", s.handleSourceDefinitions)
 
 	return s, nil
 }
@@ -90,37 +91,33 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
-func (s *Server) addDefinition(source string, gvk string, def *core.ResourceDefinition) {
-	slog.Debug("Adding Definition", "source", source, "gvk", gvk)
+func (s *Server) addDefinition(def *core.ResourceDefinition, version string) {
+	kind := path.Join(def.Spec.Group, version, def.Names.Plural)
 
-	src, ok := s.sources[source]
-	if !ok {
-		src = map[string]*core.ResourceDefinition{}
-		s.sources[source] = src
-	}
+	slog.Debug("Adding Definition", "kind", kind)
 
-	src[gvk] = def
+	s.definitions[kind] = def
 }
 
 // Register adds a new controller and definition with a particular filesystem to the server.
 // This may happen dynamically in the future, so it is guarded with a write lock.
-func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *core.ResourceDefinition) {
+func (s *Server) Register(cntl Controller, def *core.ResourceDefinition) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for version := range def.Spec.Versions {
 		var (
 			version = version
-			prefix  = fmt.Sprintf("/apis/%s/%s/%s/%s/namespaces/{ns}", source, def.Spec.Group, version, def.Names.Plural)
+			prefix  = fmt.Sprintf("/apis/%s/%s/namespaces/{ns}/%s", def.Spec.Group, version, def.Names.Plural)
 			named   = prefix + "/{name}"
 		)
 
 		// update sources map
-		s.addDefinition(source, path.Join(def.Spec.Group, version, def.Names.Kind), def)
+		s.addDefinition(def, version)
 
 		// list kind
 		s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if err := fss.View(r.Context(), s.rev, func(f fs.FS) error {
+			if err := s.fs.View(r.Context(), s.rev, func(f fs.FS) error {
 				resources, err := cntl.List(r.Context(), &controllers.ListRequest{
 					Request: controllers.Request{
 						Group:     def.Spec.Group,
@@ -150,7 +147,7 @@ func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *c
 
 		// get kind
 		s.mux.Get(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if err := fss.View(r.Context(), s.rev, func(f fs.FS) error {
+			if err := s.fs.View(r.Context(), s.rev, func(f fs.FS) error {
 				resource, err := cntl.Get(r.Context(), &controllers.GetRequest{
 					Request: controllers.Request{
 						Group:     def.Spec.Group,
@@ -186,7 +183,7 @@ func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *c
 				resource.Metadata.Namespace, resource.Metadata.Name,
 			)
 
-			result, err := fss.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
+			result, err := s.fs.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
 				return cntl.Put(r.Context(), &controllers.PutRequest{
 					Request: controllers.Request{
 						Group:     def.Spec.Group,
@@ -222,7 +219,7 @@ func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *c
 				)
 			)
 
-			result, err := fss.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
+			result, err := s.fs.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
 				return cntl.Delete(r.Context(), &controllers.DeleteRequest{
 					Request: controllers.Request{
 						Group:     def.Spec.Group,
@@ -247,45 +244,11 @@ func (s *Server) Register(source string, fss Filesystem, cntl Controller, def *c
 	}
 }
 
-type Source struct {
-	Name      string `json:"name"`
-	Resources int    `json:"resources"`
-}
-
-func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	var sources []Source
-	for name, src := range s.sources {
-		sources = append(sources, Source{
-			Name:      name,
-			Resources: len(src),
-		})
-	}
-
-	sort.Slice(sources, func(i, j int) bool {
-		return sources[i].Name < sources[j].Name
-	})
-
-	if err := json.NewEncoder(w).Encode(&sources); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
 func (s *Server) handleSourceDefinitions(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	src := chi.URLParamFromCtx(r.Context(), "source")
-	definitions, ok := s.sources[src]
-	if !ok {
-		http.Error(w, fmt.Sprintf("source not found: %q", src), http.StatusNotFound)
-		return
-	}
-
-	if err := json.NewEncoder(w).Encode(&definitions); err != nil {
+	if err := json.NewEncoder(w).Encode(s.definitions); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

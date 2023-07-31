@@ -6,14 +6,34 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 
 	"go.flipt.io/cup/pkg/api/core"
+	"go.flipt.io/cup/pkg/containers"
 )
 
 type Config struct {
-	API     API               `json:"api"`
-	Sources map[string]Source `json:"sources"`
+	API         API                   `json:"api"`
+	Controllers map[string]Controller `json:"controllers"`
+	Definitions []ResourceDefinition  `json:"definitions"`
+}
+
+func (c *Config) DefinitionsByType() (containers.MapStore[string, *core.ResourceDefinition], error) {
+	m := map[string]*core.ResourceDefinition{}
+
+	for _, def := range c.Definitions {
+		d, err := def.Definition()
+		if err != nil {
+			return nil, err
+		}
+
+		for version := range d.Spec.Versions {
+			m[path.Join(d.Spec.Group, version, d.Names.Plural)] = d
+		}
+	}
+
+	return m, nil
 }
 
 func Parse(path string) (_ *Config, err error) {
@@ -39,7 +59,13 @@ func Parse(path string) (_ *Config, err error) {
 }
 
 type API struct {
-	Address string `json:"address"`
+	Address   string                     `json:"address"`
+	Source    Source                     `json:"source"`
+	Resources map[string]ResourceBinding `json:"resources"`
+}
+
+type ResourceBinding struct {
+	Controller string `json:"controller"`
 }
 
 type SourceType string
@@ -50,10 +76,9 @@ const (
 )
 
 type Source struct {
-	Type      SourceType           `json:"type"`
-	Local     *LocalSource         `json:"local,omitempty"`
-	Git       *GitSource           `json:"git,omitempty"`
-	Resources []ResourceDefinition `json:"resources"`
+	Type  SourceType   `json:"type"`
+	Local *LocalSource `json:"local,omitempty"`
+	Git   *GitSource   `json:"git,omitempty"`
 }
 
 type LocalSource struct {
@@ -111,9 +136,8 @@ func (s *GitSource) OwnerRepo() (owner, repo string, err error) {
 }
 
 type ResourceDefinition struct {
-	Controller Controller               `json:"controller"`
-	Path       *string                  `json:"path.omitempty"`
-	Inline     *core.ResourceDefinition `json:"inline,omitempty"`
+	Path   *string                  `json:"path.omitempty"`
+	Inline *core.ResourceDefinition `json:"inline,omitempty"`
 }
 
 func (r ResourceDefinition) Definition() (*core.ResourceDefinition, error) {

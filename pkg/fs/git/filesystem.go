@@ -22,7 +22,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-var _ api.Filesystem = (*Filesystem)(nil)
+var _ api.Source = (*Filesystem)(nil)
 
 // Proposal is the internal representation of what becomes a pull or merge request
 // on a target SCM.

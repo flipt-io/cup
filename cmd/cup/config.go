@@ -21,7 +21,7 @@ func configCommand() *cli.Command {
 			}
 
 			wr := writer()
-			fmt.Fprintln(wr, "NAME\tADDRESS\tSOURCE\tNAMESPACE\tCURRENT\t")
+			fmt.Fprintln(wr, "NAME\tADDRESS\tNAMESPACE\tCURRENT\t")
 			for name, ctx := range cfg.Contexts {
 				var current string
 				if name == cfg.CurrentContext {
@@ -33,7 +33,7 @@ func configCommand() *cli.Command {
 					namespace = ctx.Namespace
 				}
 
-				fmt.Fprintf(wr, "%s\t%s\t%s\t%s\t%s\t\n", name, ctx.Address, ctx.Source, namespace, current)
+				fmt.Fprintf(wr, "%s\t%s\t%s\t%s\t\n", name, ctx.Address, namespace, current)
 			}
 			return wr.Flush()
 		},
@@ -68,7 +68,6 @@ func defaultConfig() config {
 		Contexts: map[string]*context{
 			"default": {
 				Address:   "http://localhost:8181",
-				Source:    "default",
 				Namespace: "default",
 			},
 		},
@@ -77,10 +76,6 @@ func defaultConfig() config {
 
 func (c config) Address() string {
 	return c.Contexts[c.CurrentContext].Address
-}
-
-func (c config) Source() string {
-	return c.Contexts[c.CurrentContext].Source
 }
 
 func (c config) Namespace() string {
@@ -94,7 +89,6 @@ func (c config) Namespace() string {
 
 type context struct {
 	Address   string `json:"address"`
-	Source    string `json:"source"`
 	Namespace string `json:"namespace"`
 }
 
@@ -132,12 +126,10 @@ func configSet(ctx *cli.Context, key, value string) error {
 	switch key {
 	case "address":
 		conf.Contexts[conf.CurrentContext].Address = value
-	case "source":
-		conf.Contexts[conf.CurrentContext].Source = value
 	case "namespace":
 		conf.Contexts[conf.CurrentContext].Namespace = value
 	default:
-		return fmt.Errorf("unknown config key: %q (should be one of [address, source, namespace])", key)
+		return fmt.Errorf("unknown config key: %q (should be one of [address, namespace])", key)
 	}
 
 	if err := fi.Truncate(0); err != nil {
