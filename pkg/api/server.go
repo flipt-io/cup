@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/oklog/ulid/v2"
+	"github.com/xeipuuv/gojsonschema"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controllers"
@@ -101,11 +102,11 @@ func (s *Server) addDefinition(def *core.ResourceDefinition, version string) {
 
 // Register adds a new controller and definition with a particular filesystem to the server.
 // This may happen dynamically in the future, so it is guarded with a write lock.
-func (s *Server) Register(cntl Controller, def *core.ResourceDefinition) {
+func (s *Server) Register(cntl Controller, def *core.ResourceDefinition) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for version := range def.Spec.Versions {
+	for version, schema := range def.Spec.Versions {
 		var (
 			version = version
 			prefix  = fmt.Sprintf("/apis/%s/%s/namespaces/{ns}/%s", def.Spec.Group, version, def.Names.Plural)
@@ -114,6 +115,11 @@ func (s *Server) Register(cntl Controller, def *core.ResourceDefinition) {
 
 		// update sources map
 		s.addDefinition(def, version)
+
+		schema, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(schema))
+		if err != nil {
+			return err
+		}
 
 		// list kind
 		s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +179,18 @@ func (s *Server) Register(cntl Controller, def *core.ResourceDefinition) {
 		s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var resource core.Resource
 			if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
-				http.Error(w, err.Error(), http.StatusBadGateway)
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			res, err := schema.Validate(gojsonschema.NewBytesLoader(resource.Spec))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if !res.Valid() {
+				http.Error(w, fmt.Sprintf("%v", res.Errors()), http.StatusBadRequest)
 				return
 			}
 
@@ -242,6 +259,8 @@ func (s *Server) Register(cntl Controller, def *core.ResourceDefinition) {
 			}
 		}))
 	}
+
+	return nil
 }
 
 func (s *Server) handleSourceDefinitions(w http.ResponseWriter, r *http.Request) {

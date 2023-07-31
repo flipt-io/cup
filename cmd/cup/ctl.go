@@ -14,6 +14,7 @@ import (
 
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/encoding"
+	"golang.org/x/exp/slog"
 )
 
 func definitions(cfg config, client *http.Client) error {
@@ -149,7 +150,7 @@ func apply(cfg config, client *http.Client, source string) (err error) {
 		return err
 	}
 
-	defs, err := getDefintions(cfg, client)
+	defs, err := getDefintionsByAPIVersionKind(cfg, client)
 	if err != nil {
 		return err
 	}
@@ -186,6 +187,13 @@ func apply(cfg config, client *http.Client, source string) (err error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("reading unexpected response body: %w", err)
+		}
+
+		slog.Error("Applying resource", "response", string(body))
+
 		return fmt.Errorf("unexpected status: %q", resp.Status)
 	}
 
@@ -258,6 +266,22 @@ func getGVK(cfg config, client *http.Client, typ string) (group, version, kind s
 	}
 
 	return
+}
+
+func getDefintionsByAPIVersionKind(cfg config, client *http.Client) (map[string]*core.ResourceDefinition, error) {
+	m := map[string]*core.ResourceDefinition{}
+	defs, err := getDefintions(cfg, client)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, def := range defs {
+		for version := range def.Spec.Versions {
+			m[path.Join(def.Spec.Group, version, def.Names.Kind)] = def
+		}
+	}
+
+	return m, nil
 }
 
 func getDefintions(cfg config, client *http.Client) (map[string]*core.ResourceDefinition, error) {

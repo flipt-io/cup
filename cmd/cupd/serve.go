@@ -106,9 +106,11 @@ func serve(ctx *cli.Context) error {
 			return fmt.Errorf("controller type not supported: %q", controllerConf.Type)
 		}
 
-		slog.Debug("Registering Controller", "kind", typ)
+		if err := srv.Register(controller, def); err != nil {
+			return fmt.Errorf("registering resource %q: %w", typ, err)
+		}
 
-		srv.Register(controller, def)
+		slog.Debug("Registered Resource Controller", "kind", typ, "controller", binding.Controller)
 	}
 
 	slog.Info("Listening...", "address", cfg.API.Address)
