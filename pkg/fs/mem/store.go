@@ -11,7 +11,7 @@ import (
 	"go.flipt.io/cup/pkg/controllers"
 )
 
-var _ api.Filesystem = (*Filesystem)(nil)
+var _ api.Source = (*Filesystem)(nil)
 
 // Filesystem is primarily used for testing.
 // The implementations are indexed by revision internally.

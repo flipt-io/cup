@@ -31,74 +31,84 @@ func serve(ctx *cli.Context) error {
 		return err
 	}
 
-	srv, err := api.NewServer()
+	var fs api.Source
+
+	src := cfg.API.Source
+	switch src.Type {
+	case config.SourceTypeGit:
+		user, pass := src.Git.Credentials()
+
+		var scm git.SCM
+		switch src.Git.SCM {
+		case config.SCMTypeGitea:
+			owner, repo, err := src.Git.OwnerRepo()
+			if err != nil {
+				return err
+			}
+
+			client, err := gitea.NewClient(src.Git.Host(), gitea.SetBasicAuth(user, pass))
+			if err != nil {
+				return err
+			}
+
+			scm = scmgitea.New(client, owner, repo)
+		default:
+			return fmt.Errorf("scm type not supported: %q", src.Git.SCM)
+		}
+
+		fs, err = git.NewFilesystem(ctx.Context, scm, src.Git.URL.String(), git.WithAuth(
+			&githttp.BasicAuth{
+				Username: user,
+				Password: pass,
+			},
+		))
+		if err != nil {
+			return err
+		}
+	case config.SourceTypeLocal:
+		fs = local.New(src.Local.Path)
+	}
+
+	srv, err := api.NewServer(fs)
 	if err != nil {
 		return err
 	}
 
-	for k, src := range cfg.Sources {
-		var fs api.Filesystem
+	defs, err := cfg.DefinitionsByType()
+	if err != nil {
+		return err
+	}
 
-		switch src.Type {
-		case config.SourceTypeGit:
-			user, pass := src.Git.Credentials()
+	for typ, binding := range cfg.API.Resources {
+		var controller api.Controller
 
-			var scm git.SCM
-			switch src.Git.SCM {
-			case config.SCMTypeGitea:
-				owner, repo, err := src.Git.OwnerRepo()
-				if err != nil {
-					return err
-				}
-
-				client, err := gitea.NewClient(src.Git.Host(), gitea.SetBasicAuth(user, pass))
-				if err != nil {
-					return err
-				}
-
-				scm = scmgitea.New(client, owner, repo)
-			default:
-				return fmt.Errorf("scm type not supported: %q", src.Git.SCM)
-			}
-
-			fs, err = git.NewFilesystem(ctx.Context, scm, src.Git.URL.String(), git.WithAuth(
-				&githttp.BasicAuth{
-					Username: user,
-					Password: pass,
-				},
-			))
-			if err != nil {
-				return err
-			}
-		case config.SourceTypeLocal:
-			fs = local.New(src.Local.Path)
+		controllerConf, ok := cfg.Controllers[binding.Controller]
+		if !ok {
+			return fmt.Errorf("unexpected controller: %q", binding.Controller)
 		}
 
-		for _, resource := range src.Resources {
-			var controller api.Controller
-			def, err := resource.Definition()
+		def, err := defs.Get(typ)
+		if err != nil {
+			return err
+		}
+
+		switch controllerConf.Type {
+		case config.ControllerTypeTemplate:
+			controller = template.New()
+		case config.ControllerTypeWASM:
+			exec, err := os.ReadFile(controllerConf.WASM.Executable)
 			if err != nil {
 				return err
 			}
 
-			switch resource.Controller.Type {
-			case config.ControllerTypeTemplate:
-				controller = template.New()
-			case config.ControllerTypeWASM:
-				exec, err := os.ReadFile(resource.Controller.WASM.Executable)
-				if err != nil {
-					return err
-				}
-
-				controller = wasm.New(ctx.Context, exec)
-			default:
-				return fmt.Errorf("controller type not supported: %q", resource.Controller.Type)
-			}
-
-			slog.Debug("Registering Controller", "apiVersion", def.APIVersion, "kind", def.Kind)
-
-			srv.Register(k, fs, controller, def)
+			controller = wasm.New(ctx.Context, exec)
+		default:
+			return fmt.Errorf("controller type not supported: %q", controllerConf.Type)
 		}
+
+		slog.Debug("Registering Controller", "kind", typ)
+
+		srv.Register(controller, def)
 	}
 
 	slog.Info("Listening...", "address", cfg.API.Address)

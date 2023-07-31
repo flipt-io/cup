@@ -12,45 +12,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/encoding"
 )
-
-func sources(cfg config, client *http.Client) error {
-	address := cfg.Address()
-	req, err := http.NewRequest(http.MethodGet, address+"/apis", nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status: %q", resp.Status)
-	}
-
-	var sources []api.Source
-	if err := json.NewDecoder(resp.Body).Decode(&sources); err != nil {
-		return err
-	}
-
-	wr := writer()
-	fmt.Fprintln(wr, "SOURCE\tRESOURCE COUNT\t")
-	for _, src := range sources {
-		fmt.Fprintf(wr, "%s\t%d\t\n", src.Name, src.Resources)
-	}
-
-	return wr.Flush()
-}
 
 func definitions(cfg config, client *http.Client) error {
 	definitions, err := getDefintions(cfg, client)
@@ -83,13 +47,12 @@ func get(cfg config, client *http.Client, typ string, args ...string) error {
 		return fmt.Errorf("get: %w", err)
 	}
 
-	endpoint := fmt.Sprintf("%s/apis/%s/%s/%s/%s/namespaces/%s",
+	endpoint := fmt.Sprintf("%s/apis/%s/%s/namespaces/%s/%s",
 		cfg.Address(),
-		cfg.Source(),
 		group,
 		version,
-		kind,
 		cfg.Namespace(),
+		kind,
 	)
 
 	if len(args) == 1 {
@@ -198,13 +161,12 @@ func apply(cfg config, client *http.Client, source string) (err error) {
 	}
 
 	group, version, _ := strings.Cut(resource.APIVersion, "/")
-	endpoint := fmt.Sprintf("%s/apis/%s/%s/%s/%s/namespaces/%s/%s",
+	endpoint := fmt.Sprintf("%s/apis/%s/%s/namespaces/%s/%s/%s",
 		cfg.Address(),
-		cfg.Source(),
 		group,
 		version,
-		def.Names.Plural,
 		resource.Metadata.Namespace,
+		def.Names.Plural,
 		resource.Metadata.Name,
 	)
 
@@ -299,7 +261,7 @@ func getGVK(cfg config, client *http.Client, typ string) (group, version, kind s
 }
 
 func getDefintions(cfg config, client *http.Client) (map[string]*core.ResourceDefinition, error) {
-	req, err := http.NewRequest(http.MethodGet, cfg.Address()+"/apis/"+cfg.Source(), nil)
+	req, err := http.NewRequest(http.MethodGet, cfg.Address()+"/apis", nil)
 	if err != nil {
 		return nil, err
 	}
