@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controllers"
-	"go.flipt.io/cup/pkg/fs/git"
-	giteascm "go.flipt.io/cup/pkg/fs/git/scm/gitea"
+	"go.flipt.io/cup/pkg/source/git"
+	giteascm "go.flipt.io/cup/pkg/source/git/scm/gitea"
 	"golang.org/x/exp/slog"
 )
 

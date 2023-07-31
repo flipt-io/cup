@@ -18,7 +18,7 @@ import (
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/controllers/template"
 	"go.flipt.io/cup/pkg/encoding"
-	"go.flipt.io/cup/pkg/fs/mem"
+	"go.flipt.io/cup/pkg/source/mem"
 )
 
 var testDef = &core.ResourceDefinition{
