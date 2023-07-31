@@ -48,7 +48,7 @@ The goal is to provide users with a way to manage the logical resources represen
 │     │            │ └───────▲─────────┬────────┘ │  │      │  │                     │         │
 │  A  ◀────────────┤         │         │          │  │      │  │                     │         │
 │  P  │            │ ┌───────┴─────────▼────────┐ │  │      │  └─────────────────────┘         │
-│  I  │            │ │ Filesystem               ◀─┼──┘  ┌───▶                                  │
+│  I  │            │ │ Source                   ◀─┼──┘  ┌───▶                                  │
 │     │            │ │                          │ │     │   │                                  │
 │  S  │            │ └──────────────────────────┘ ├─────┘   └──────────────────────────────────┘
 │  e  │            └──────────────────────────────┘         ┌──────────────────────────────────┐
@@ -329,7 +329,7 @@ This diagram gives an overview of the flow of a successsful `PUT` request:
 sequenceDiagram
     participant A as Actor
     participant S as API Server
-    participant F as git.FilesystemStore
+    participant F as git.Source
     participant C as Controller
     participant R as Runtime (WASM)
     participant G as Git

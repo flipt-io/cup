@@ -9,29 +9,29 @@ import (
 	"go.flipt.io/cup/pkg/controllers"
 )
 
-// Filesystem implements the abstraction required by an *api.Server
+// Source implements the abstraction required by an *api.Server
 // to read and update a target source filesystem.
 // This implementation works directly over the host.
-type Filesystem struct {
+type Source struct {
 	path string
 }
 
-// New constructs and configures a new instance of *Filesystem
+// New constructs and configures a new instance of *Source
 // for the provided path.
-func New(path string) *Filesystem {
-	return &Filesystem{path: path}
+func New(path string) *Source {
+	return &Source{path: path}
 }
 
 // View invokes the provided function with an fs.FS which should enforce
 // a read-only view for the requested source and revision.
-func (f *Filesystem) View(_ context.Context, revision string, fn api.ViewFunc) error {
+func (f *Source) View(_ context.Context, revision string, fn api.ViewFunc) error {
 	return fn(billyfs.New(osfs.New(f.path)))
 }
 
 // Update invokes the provided function with an FSConfig which can be written to
 // Any writes performed to the target during the execution of fn will be added,
 // comitted, pushed and proposed for review on a target SCM.
-func (f *Filesystem) Update(_ context.Context, revision string, message string, fn api.UpdateFunc) (*api.Result, error) {
+func (f *Source) Update(_ context.Context, revision string, message string, fn api.UpdateFunc) (*api.Result, error) {
 	return &api.Result{}, fn(controllers.FSConfig{
 		FS:  osfs.New(f.path),
 		Dir: &f.path,
