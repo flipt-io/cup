@@ -6,7 +6,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/oklog/ulid/v2"
-	"go.flipt.io/cup/pkg/fs/git"
+	"go.flipt.io/cup/pkg/source/git"
 )
 
 type SCM struct {

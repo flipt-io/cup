@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/oklog/ulid/v2"
-	"go.flipt.io/cup/pkg/fs/git"
+	"go.flipt.io/cup/pkg/source/git"
 )
 
 // SCM is an in-memory representation of the git.SCM interface.

@@ -12,9 +12,9 @@ import (
 	"go.flipt.io/cup/pkg/config"
 	"go.flipt.io/cup/pkg/controllers/template"
 	"go.flipt.io/cup/pkg/controllers/wasm"
-	"go.flipt.io/cup/pkg/fs/git"
-	scmgitea "go.flipt.io/cup/pkg/fs/git/scm/gitea"
-	"go.flipt.io/cup/pkg/fs/local"
+	"go.flipt.io/cup/pkg/source/git"
+	scmgitea "go.flipt.io/cup/pkg/source/git/scm/gitea"
+	"go.flipt.io/cup/pkg/source/local"
 	"golang.org/x/exp/slog"
 )
 
