@@ -7,6 +7,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/google/go-github/v53/github"
 	"github.com/urfave/cli/v2"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/config"
@@ -14,6 +15,7 @@ import (
 	"go.flipt.io/cup/pkg/controllers/wasm"
 	"go.flipt.io/cup/pkg/source/git"
 	scmgitea "go.flipt.io/cup/pkg/source/git/scm/gitea"
+	scmgithub "go.flipt.io/cup/pkg/source/git/scm/github"
 	"go.flipt.io/cup/pkg/source/local"
 	"golang.org/x/exp/slog"
 )
@@ -37,21 +39,34 @@ func serve(ctx *cli.Context) error {
 	switch src.Type {
 	case config.SourceTypeGit:
 		user, pass := src.Git.Credentials()
+		owner, repo, err := src.Git.OwnerRepo()
+		if err != nil {
+			return err
+		}
 
 		var scm git.SCM
 		switch src.Git.SCM {
 		case config.SCMTypeGitea:
-			owner, repo, err := src.Git.OwnerRepo()
-			if err != nil {
-				return err
-			}
-
 			client, err := gitea.NewClient(src.Git.Host(), gitea.SetBasicAuth(user, pass))
 			if err != nil {
 				return err
 			}
 
 			scm = scmgitea.New(client, owner, repo)
+		case config.SCMTypeGitHub:
+			tp := github.BasicAuthTransport{
+				Username: user,
+				Password: pass,
+			}
+
+			client := github.NewClient(tp.Client())
+			// resolve actual user name from API
+			user, _, err := client.Users.Get(ctx.Context, "")
+			if err != nil {
+				return err
+			}
+
+			scm = scmgithub.New(client, owner, repo, user.GetName())
 		default:
 			return fmt.Errorf("scm type not supported: %q", src.Git.SCM)
 		}
