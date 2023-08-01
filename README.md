@@ -1,101 +1,232 @@
-cup - GitOps Contribution Automation Tool
------------------------------------------
+> ⚠️ This is an active experiment into the benefits of managing an API over Git.
+> Expect it to change quite frequently.
+> Regardless, we really want your input, so please do give it a go.
 
-`cup` brings Git repositories to life.
+`cup` An Instant API for Git
+----------------------------
 
-Instantly expose the contents of your Git repositories via the `cup` API.
-Get, List, Update and Delete the logical resources represented within them.
-Let `cup` handle pushing contributions and opening pull-requests when using the mutation APIs.
+<div align="center">
+  <img src="https://github.com/flipt-io/cup/assets/1253326/602edfd0-8da3-4b37-856a-8b620af0d264" alt="CUP" width="240" />
+</div>
 
-Use common pre-built runtimes, referred to as `sourcers`, to expose common configuration formats by simply configuring `cup`.
-Alternatively, build your own `sourcers` in any language which compiles to WASM WASI preview1.
+`cup` brings Git repositories to life
+
+## Features
+
+- 🔋 Materialize API resources directly from Git
+- 🏭 Manage change through a declarative API
+- 🔩 Extend `cup` in your language of choice
+
+## Roadmap
+
+- [ ] 🛰️ Track open proposals directly in `cup`
+- [ ] 🔒 Secure access via authorization policies
+
+## Dependencies
+
+- Go (>= 1.20)
+- An SCM (Currently supported: GitHub, Gitea)
 
 ## Building
 
-### Requirements
+`cup` is actively being developed and very much in its infancy.
+For now, to play with `cup` you will need to clone this project and build from source.
 
-- Go
+### `cupd` Server
 
-## Running
+`cupd` is the server portion of the `cup` project.
+It handles sources to target repositories, manifesting resource APIs and handling transformations through resource controllers.
 
-```sh
-# serve current working directory
-go run cmd/cup/main.go
-
-# serve an upstream repository
-go run cmd/cup/main.go -source git -repository http://flipt:password@localhost:3001/flipt/features.git
+```
+go install ./cmd/cupd/...
 ```
 
-## Sourcers
+#### Configuration
 
-`cup` requires `sourcers` to collect and transform the logical resources described within your Git repositories.
+A `cupd` instance is configured via a `cupd.json` configuration file.
 
-A `sourcer` is a WASM binary compiled for a WASI execution environment (specifically `cup` uses Wazero).
-Each binary should conform to the same API. Currently, that consists of four sub-commands.
+<details>
 
-The sub-commands should parse the local filesystem for state you want to expose.
-Each `sourcer` represents a single logical resource encoded in your repository.
-For example, Flipt's feature flags can be encoded in a repository via a YAML configuration format.
+<summary>Configuring cup to manage Flipt resources</summary>
 
-Checkout the [Flipt Flag](./cmd/flipt/main.go) implementation for an example.
-This uses the [sdk/go](./sdk/go) package to simplify bootstrapping a `sourcer` implementation.
-It allows developers to focus on the business logic of finding resources and updating them.
-You simply need to implement the `sdk.TypedRuntime[T]` generic interface.
+The following contains an example configuration for exposing [Flipt](https://flipt.io) feature flag state via `cup`.
 
-### CLI Commands
+The configuration exposes the two primary top-level Flipt resources:
 
-Each of the following should be handled as the first argument after the program name:
+- Flags
+- Segments
 
-- `type`
+The WASM runtime can be built using `gotip` (requires Go 1.21+) against the Flipt controller in this project:
 
-Should return a JSON encoded object containing the group, kind and version of the `sourcer` instance.
+```bash
+cd ext/controllers/flipt.io
 
-```sh
-➜  go run cmd/flipt/main.go type | jq
+GOOS=wasip1 GOARCH=wasm gotip build -o v1alpha1/flipt.wasm ./v1alpha1/cmd/flipt/*.go
+```
+
+`cupd.json` configuration contents:
+
+```json
 {
-  "group": "flipt.io",
-  "kind": "Flag",
-  "version": "v1"
+  "api": {
+    "address": ":8181",
+    "source": {
+      "type": "git",
+      "git": {
+        "url": "http://username:PAT@github.com/yourrepo/something.git",
+        "scm": "github"
+      }
+    },
+    "resources": {
+      "flipt.io/v1alpha1/flags": {
+        "controller": "flipt"
+      },
+      "flipt.io/v1alpha1/segments": {
+        "controller": "flipt"
+      }
+    }
+  },
+  "controllers": {
+    "flipt": {
+      "type": "wasm",
+      "wasm": {
+        "executable": "ext/controllers/flipt.io/v1alpha1/flipt.wasm"
+      }
+    }
+  },
+  "definitions": [
+    {
+      "inline": {
+        "apiVersion": "cup.flipt.io/v1alpha1",
+        "kind": "ResourceDefinition",
+        "metadata": {
+          "name": "flags.flipt.io"
+        },
+        "names": {
+          "kind": "Flag",
+          "singular": "flag",
+          "plural": "flags"
+        },
+        "spec": {
+          "group": "flipt.io",
+          "versions": {
+            "v1alpha1": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "name": { "type": "string" },
+                "type": { "enum": ["", "FLAG_TYPE_VARIANT", "FLAG_TYPE_BOOLEAN"] },
+                "enabled": { "type": "boolean" },
+                "description": { "type": "string" },
+                "variants": {
+                  "type": ["array", "null"],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": { "type": "string" },
+                      "description": { "type": "string" },
+                      "attachment": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                },
+                "rules": {
+                  "type": ["array", "null"],
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "rollouts": {
+                  "type": ["array", "null"],
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "inline": {
+        "apiVersion": "cup.flipt.io/v1alpha1",
+        "kind": "ResourceDefinition",
+        "metadata": {
+          "name": "segments.flipt.io"
+        },
+        "names": {
+          "kind": "Segment",
+          "singular": "segment",
+          "plural": "segments"
+        },
+        "spec": {
+          "group": "flipt.io",
+          "versions": {
+            "v1alpha1": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    }
+  ]
 }
 ```
 
-- `list`
+</details>
 
-Should return a stream of JSON encoded resources on STDOUT (JSON-LD stream).
-The entire contents is expected to be listed when this is called.
-Each resource should expose a `namespace` and an `id`.
-Each `id` must be unique within each `namespace`.
+### `cup` CLI
 
-```sh
-➜  go run cmd/flipt/main.go list
-{"namespace":"default","id":"flag1","payload":{"name":"flag1","description":"description","enabled":true,"variants":[...],"rules":[...]}}
-{"namespace":"default","id":"foo","payload":{"name":"Foo","description":"","enabled":false,"variants":null,"rules":null}}
-```
-
-- `put`
-
-Takes a single JSON encoded resource in STDIN to be created or updated (upsert).
-The implementation should locate all files which relate to the resource and re-render them appropriately.
-Each files new contents must be streamed back out as a JSON encoded object with the path, contents and a message describing the change.
+`cup` is a CLI which is heavily influenced by `kubectl`.
+It can be used locally to interact and introspect into a running `cupd`.
 
 ```
-➜  go run cmd/flipt/main.go put <<EOF | jq -r
-{"namespace":"default","id":"foo","payload":{"name":"Foo","enabled":true}}
-EOF
-{
-  "path": "features.yml",
-  "message": "feat: update flag \"default/foo\"",
-  "contents": "bmFtZXNwYWNlOi..."
-}
+go install ./cmd/cup/...
 ```
 
-- `delete`
+#### Usage
 
-Takes a namespace and id for a particular resource as command-line arguments.
-The implementation should locate all files related and remove the related resource data.
-Once again, the new contents of each file should be streamed as JSON encoded objects with the path, new contents and message describing the change.
+```bash
+NAME:
+   cup - a resource API for Git
 
-```sh
-➜  go run cmd/flipt/main.go delete default foo
-{"path":"features.yml","message":"feat: delete flag \"default/foo\"","contents":"bmFtZXNw..."}
+USAGE:
+   cup [global options] command [command options] [arguments...]
+
+COMMANDS:
+   config, c  Access the local configuration for the cup CLI.
+   help, h    Shows a list of commands or help for one command
+   discovery:
+     definitions, defs  List the available resource definitions for a target source
+   resource:
+     get    Get one or more resources
+     apply  Put a resource from file on stdin
+
+GLOBAL OPTIONS:
+   --config value, -c value  (default: "$HOME/Library/Application Support/cup/config.json")
+   --output value, -o value  (default: "table")
+   --help, -h                show help
 ```
+
+## Appreciation
+
+`cup` is built on the shoulders of giants and inspired by many awesome projects that came before.
+
+Built on:
+
+- The [Go](https://go.dev/) programming language
+- The [Wazero](https://github.com/tetratelabs/wazero/) Go WASM runtime
+- The wonderful SCMs (Gitea, GitHub etc.)
+
+Inspired by:
+
+- [Kubernetes](https://kubernetes.io/)
+- Our own wonderful [Flipt](https://github.com/flipt-io/flipt).
