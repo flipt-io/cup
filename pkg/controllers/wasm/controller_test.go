@@ -1,6 +1,7 @@
 package wasm
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -236,9 +237,19 @@ func testdataFSCopy(t *testing.T) string {
 func compileTestController(t *testing.T) ([]byte, bool) {
 	t.Helper()
 
-	if _, err := exec.LookPath("gotip"); err != nil {
-		t.Skip("gotip required to run wazero based tests")
-		return nil, true
+	goCommand := "go"
+
+	cmd := exec.Command(goCommand, "tool", "dist", "list")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+
+	if !bytes.Contains(out, []byte(`wasip1/wasm`)) {
+		goCommand = "gotip"
+
+		if _, err := exec.LookPath("gotip"); err != nil {
+			t.Skip("go support for wasip1 required to run tests")
+			return nil, true
+		}
 	}
 
 	tmp, err := os.CreateTemp("", "test-*.wasm")
@@ -249,7 +260,7 @@ func compileTestController(t *testing.T) ([]byte, bool) {
 		_ = os.Remove(tmp.Name())
 	})
 
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("gotip build -o %[1]s testdata/main.go && cat %[1]s", tmp.Name()))
+	cmd = exec.Command("sh", "-c", fmt.Sprintf("%s build -o %[1]s testdata/main.go && cat %[1]s", goCommand, tmp.Name()))
 	cmd.Env = append([]string{
 		"GOOS=wasip1",
 		"GOARCH=wasm",

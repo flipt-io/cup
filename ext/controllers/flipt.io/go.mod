@@ -6,7 +6,7 @@ require (
 	github.com/gobwas/glob v0.2.3
 	go.flipt.io/cup v0.0.0-00010101000000-000000000000
 	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
-	gopkg.in/yaml.v2 v2.2.4
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
