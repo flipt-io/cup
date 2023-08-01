@@ -87,8 +87,7 @@ func withBase(ctx context.Context, fn func(ctx context.Context, client *dagger.C
 
 		return fn(ctx, client, base.
 			WithMountedCache(goBuildCachePath, cacheGoBuild).
-			WithMountedCache(goModCachePath, cacheGoMod).
-			WithExec([]string{"go", "install", "golang.org/dl/gotip@latest"}))
+			WithMountedCache(goModCachePath, cacheGoMod))
 	})
 }
 
