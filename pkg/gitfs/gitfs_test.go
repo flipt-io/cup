@@ -24,7 +24,7 @@ var expected = map[string]string{
 func Test_FS(t *testing.T) {
 	repo := testdataRepo(t)
 
-	filesystem, err := NewFromRepo(repo)
+	filesystem, _, err := NewFromRepo(repo)
 	require.NoError(t, err)
 
 	t.Run("Ensure invalid and non existent paths produce an error", func(t *testing.T) {
