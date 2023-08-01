@@ -19,6 +19,7 @@ import (
 	"go.flipt.io/cup/pkg/controllers/template"
 	"go.flipt.io/cup/pkg/encoding"
 	"go.flipt.io/cup/pkg/source/mem"
+	"golang.org/x/exp/slog"
 )
 
 var testDef = &core.ResourceDefinition{
@@ -35,9 +36,20 @@ var testDef = &core.ResourceDefinition{
 	Spec: core.ResourceDefinitionSpec{
 		Group: "test.cup.flipt.io",
 		Versions: map[string]json.RawMessage{
-			"v1alpha1": []byte("null"),
+			"v1alpha1": []byte(`{"type":"object"}`),
 		},
 	},
+}
+
+func TestMain(m *testing.M) {
+	slog.SetDefault(slog.New(slog.NewTextHandler(
+		os.Stdout,
+		&slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	)))
+
+	os.Exit(m.Run())
 }
 
 func Test_Server_Definitions(t *testing.T) {
@@ -59,6 +71,8 @@ func Test_Server_Definitions(t *testing.T) {
 
 	defer resp.Body.Close()
 
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
 	var definitions map[string]*core.ResourceDefinition
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&definitions))
 
@@ -76,7 +90,7 @@ func Test_Server_Get(t *testing.T) {
 	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	server.Register(cntrl, testDef)
+	require.NoError(t, server.Register(cntrl, testDef))
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -87,11 +101,13 @@ func Test_Server_Get(t *testing.T) {
 
 	defer resp.Body.Close()
 
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
 	var resource *core.Resource
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&resource))
 
 	assert.Equal(t, &core.Resource{
-		APIVersion: "test.cup.flipt.io",
+		APIVersion: "test.cup.flipt.io/v1alpha1",
 		Kind:       "Resource",
 		Metadata: core.NamespacedMetadata{
 			Namespace: "default",
@@ -113,7 +129,7 @@ func Test_Server_List(t *testing.T) {
 	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	server.Register(cntrl, testDef)
+	require.NoError(t, server.Register(cntrl, testDef))
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -124,6 +140,8 @@ func Test_Server_List(t *testing.T) {
 
 	defer resp.Body.Close()
 
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
 	decoder := encoding.NewJSONDecoder[core.Resource](resp.Body)
 
 	resources, err := encoding.DecodeAll[core.Resource](decoder)
@@ -131,7 +149,7 @@ func Test_Server_List(t *testing.T) {
 
 	assert.Equal(t, []*core.Resource{
 		{
-			APIVersion: "test.cup.flipt.io",
+			APIVersion: "test.cup.flipt.io/v1alpha1",
 			Kind:       "Resource",
 			Metadata: core.NamespacedMetadata{
 				Namespace: "default",
@@ -144,7 +162,7 @@ func Test_Server_List(t *testing.T) {
 			Spec: []byte(`{}`),
 		},
 		{
-			APIVersion: "test.cup.flipt.io",
+			APIVersion: "test.cup.flipt.io/v1alpha1",
 			Kind:       "Resource",
 			Metadata: core.NamespacedMetadata{
 				Namespace: "default",
@@ -168,7 +186,8 @@ func Test_Server_Put(t *testing.T) {
 
 	server, err := api.NewServer(fss)
 	require.NoError(t, err)
-	server.Register(cntrl, testDef)
+
+	require.NoError(t, server.Register(cntrl, testDef))
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -228,7 +247,7 @@ func Test_Server_Delete(t *testing.T) {
 	server, err := api.NewServer(fss)
 	require.NoError(t, err)
 
-	server.Register(cntrl, testDef)
+	require.NoError(t, server.Register(cntrl, testDef))
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -258,7 +277,7 @@ func Test_Server_Delete(t *testing.T) {
 }
 
 const bazPayload = `{
-    "apiVersion": "test.cup.flipt.io",
+    "apiVersion": "test.cup.flipt.io/v1alpha1",
     "kind": "Resource",
     "metadata": {
         "namespace": "default",

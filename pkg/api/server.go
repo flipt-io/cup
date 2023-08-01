@@ -116,6 +116,8 @@ func (s *Server) Register(cntl Controller, def *core.ResourceDefinition) error {
 		// update sources map
 		s.addDefinition(def, version)
 
+		slog.Debug("Registering routes", "prefix", prefix)
+
 		schema, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(schema))
 		if err != nil {
 			return err
