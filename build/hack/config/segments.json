@@ -1,0 +1,24 @@
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "ResourceDefinition",
+  "metadata": {
+    "name": "segments.flipt.io"
+  },
+  "names": {
+    "kind": "Segment",
+    "singular": "segment",
+    "plural": "segments"
+  },
+  "spec": {
+    "group": "flipt.io",
+    "versions": {
+      "v1alpha1": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

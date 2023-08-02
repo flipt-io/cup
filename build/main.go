@@ -8,6 +8,7 @@ import (
 
 	"dagger.io/dagger"
 	"github.com/urfave/cli/v2"
+	"go.flipt.io/cup/build/hack"
 )
 
 const (
@@ -23,6 +24,22 @@ func main() {
 				Name: "build",
 				Action: func(ctx *cli.Context) error {
 					return build(ctx.Context)
+				},
+				Subcommands: []*cli.Command{
+					{
+						Name: "hack:fliptcup",
+						Action: func(ctx *cli.Context) error {
+							return withBase(ctx.Context, func(ctx context.Context, client *dagger.Client, base *dagger.Container) error {
+								cup, err := hack.FliptCup(ctx, client, base)
+								if err != nil {
+									return err
+								}
+
+								_, err = cup.Export(ctx, "fliptcup.tar")
+								return err
+							})
+						},
+					},
 				},
 			},
 			{
@@ -87,7 +104,10 @@ func withBase(ctx context.Context, fn func(ctx context.Context, client *dagger.C
 
 		return fn(ctx, client, base.
 			WithMountedCache(goBuildCachePath, cacheGoBuild).
-			WithMountedCache(goModCachePath, cacheGoMod))
+			WithMountedCache(goModCachePath, cacheGoMod).
+			WithExec([]string{"go", "build", "-o", "/usr/local/bin/cupd", "./cmd/cupd/..."}).
+			WithExec([]string{"go", "build", "-o", "/usr/local/bin/cup", "./cmd/cup/..."}),
+		)
 	})
 }
 

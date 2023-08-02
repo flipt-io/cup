@@ -1,0 +1,14 @@
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "Binding",
+  "metadata": {
+    "name": "flipt"
+  },
+  "spec": {
+    "controller": "flipt",
+    "resources": [
+      "flipt.io/v1alpha1/flags",
+      "flipt.io/v1alpha1/segments"
+    ]
+  }
+}
