@@ -41,6 +41,13 @@ func main() {
 				ShortUsage: "cupd serve [flags]",
 				ShortHelp:  "Run the cupd server",
 				FlagSet:    cfg.FlagSet(),
+				Options: []ff.Option{
+					ff.WithEnvVarPrefix("CUPD"),
+					ff.WithConfigFileParser((&ffyaml.ParseConfig{
+						Delimiter: "-",
+					}).Parse),
+					ff.WithConfigFileFlag("config"),
+				},
 				Exec: func(ctx context.Context, args []string) error {
 					return serve(ctx, cfg)
 				},
