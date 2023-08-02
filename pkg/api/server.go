@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"path"
 	"sync"
 
 	"github.com/go-chi/chi/middleware"
@@ -55,31 +54,56 @@ type Controller interface {
 	Delete(context.Context, *controllers.DeleteRequest) error
 }
 
+type Configuration struct {
+	Definitions containers.MapStore[string, *core.ResourceDefinition]
+	Controllers containers.MapStore[string, Controller]
+	Bindings    containers.MapStore[string, *core.Binding]
+}
+
 // Server is the core api.Server for cupd.
 // It handles exposing all the sources, definitions and the resources themselves.
 type Server struct {
-	mu          sync.RWMutex
-	mux         *chi.Mux
-	fs          Source
-	definitions containers.MapStore[string, *core.ResourceDefinition]
-	rev         string
+	mu  sync.RWMutex
+	mux *chi.Mux
+	fs  Source
+	cfg *Configuration
+	rev string
 }
 
 // NewServer constructs and configures a new instance of *api.Server
 // It uses the provided controller and filesystem store to build and serve
 // requests for sources, definitions and resources.
-func NewServer(fs Source) (*Server, error) {
+func NewServer(fs Source, cfg *Configuration) (*Server, error) {
 	s := &Server{
-		mux:         chi.NewMux(),
-		fs:          fs,
-		definitions: containers.MapStore[string, *core.ResourceDefinition]{},
-		rev:         "main",
+		mux: chi.NewMux(),
+		fs:  fs,
+		cfg: cfg,
+		rev: "main",
 	}
 
 	s.mux.Use(middleware.Logger)
 	s.mux.Use(cors.AllowAll().Handler)
-
 	s.mux.Get("/apis", s.handleSourceDefinitions)
+
+	for _, binding := range cfg.Bindings {
+		cntrl, err := cfg.Controllers.Get(binding.Spec.Controller)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, resource := range binding.Spec.Resources {
+			def, err := cfg.Definitions.Get(resource)
+			if err != nil {
+				return nil, err
+			}
+
+			for version := range def.Spec.Versions {
+				if err := s.register(cntrl, version, def); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
 
 	return s, nil
 }
@@ -92,175 +116,161 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
-func (s *Server) addDefinition(def *core.ResourceDefinition, version string) {
-	kind := path.Join(def.Spec.Group, version, def.Names.Plural)
-
-	slog.Debug("Adding Definition", "kind", kind)
-
-	s.definitions[kind] = def
-}
-
-// Register adds a new controller and definition with a particular filesystem to the server.
+// register adds a new controller and definition with a particular filesystem to the server.
 // This may happen dynamically in the future, so it is guarded with a write lock.
-func (s *Server) Register(cntl Controller, def *core.ResourceDefinition) error {
+func (s *Server) register(cntl Controller, version string, def *core.ResourceDefinition) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for version, schema := range def.Spec.Versions {
-		var (
-			version = version
-			prefix  = fmt.Sprintf("/apis/%s/%s/namespaces/{ns}/%s", def.Spec.Group, version, def.Names.Plural)
-			named   = prefix + "/{name}"
-		)
+	var (
+		prefix = fmt.Sprintf("/apis/%s/%s/namespaces/{ns}/%s", def.Spec.Group, version, def.Names.Plural)
+		named  = prefix + "/{name}"
+	)
 
-		// update sources map
-		s.addDefinition(def, version)
+	slog.Debug("Registering routes", "prefix", prefix)
 
-		slog.Debug("Registering routes", "prefix", prefix)
+	schema, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(def.Spec.Versions[version]))
+	if err != nil {
+		return err
+	}
 
-		schema, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(schema))
-		if err != nil {
-			return err
+	// list kind
+	s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := s.fs.View(r.Context(), s.rev, func(f fs.FS) error {
+			resources, err := cntl.List(r.Context(), &controllers.ListRequest{
+				Request: controllers.Request{
+					Group:     def.Spec.Group,
+					Version:   version,
+					Kind:      def.Names.Kind,
+					Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+				},
+				FS: f,
+			})
+			if err != nil {
+				return err
+			}
+
+			enc := json.NewEncoder(w)
+			for _, resource := range resources {
+				if err := enc.Encode(resource); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}))
+
+	// get kind
+	s.mux.Get(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := s.fs.View(r.Context(), s.rev, func(f fs.FS) error {
+			resource, err := cntl.Get(r.Context(), &controllers.GetRequest{
+				Request: controllers.Request{
+					Group:     def.Spec.Group,
+					Version:   version,
+					Kind:      def.Names.Kind,
+					Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+				},
+				FS:   f,
+				Name: chi.URLParamFromCtx(r.Context(), "name"),
+			})
+			if err != nil {
+				return err
+			}
+
+			return json.NewEncoder(w).Encode(resource)
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}))
+
+	// put kind
+	s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var resource core.Resource
+		if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
-		// list kind
-		s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if err := s.fs.View(r.Context(), s.rev, func(f fs.FS) error {
-				resources, err := cntl.List(r.Context(), &controllers.ListRequest{
-					Request: controllers.Request{
-						Group:     def.Spec.Group,
-						Version:   version,
-						Kind:      def.Names.Kind,
-						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
-					},
-					FS: f,
-				})
-				if err != nil {
-					return err
-				}
+		res, err := schema.Validate(gojsonschema.NewBytesLoader(resource.Spec))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-				enc := json.NewEncoder(w)
-				for _, resource := range resources {
-					if err := enc.Encode(resource); err != nil {
-						return err
-					}
-				}
+		if !res.Valid() {
+			http.Error(w, fmt.Sprintf("%v", res.Errors()), http.StatusBadRequest)
+			return
+		}
 
-				return nil
-			}); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}))
+		message := fmt.Sprintf(
+			"feat: update %s/%s %s/%s",
+			resource.APIVersion, resource.Kind,
+			resource.Metadata.Namespace, resource.Metadata.Name,
+		)
 
-		// get kind
-		s.mux.Get(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if err := s.fs.View(r.Context(), s.rev, func(f fs.FS) error {
-				resource, err := cntl.Get(r.Context(), &controllers.GetRequest{
-					Request: controllers.Request{
-						Group:     def.Spec.Group,
-						Version:   version,
-						Kind:      def.Names.Kind,
-						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
-					},
-					FS:   f,
-					Name: chi.URLParamFromCtx(r.Context(), "name"),
-				})
-				if err != nil {
-					return err
-				}
-
-				return json.NewEncoder(w).Encode(resource)
-			}); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}))
-
-		// put kind
-		s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var resource core.Resource
-			if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-
-			res, err := schema.Validate(gojsonschema.NewBytesLoader(resource.Spec))
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			if !res.Valid() {
-				http.Error(w, fmt.Sprintf("%v", res.Errors()), http.StatusBadRequest)
-				return
-			}
-
-			message := fmt.Sprintf(
-				"feat: update %s/%s %s/%s",
-				resource.APIVersion, resource.Kind,
-				resource.Metadata.Namespace, resource.Metadata.Name,
-			)
-
-			result, err := s.fs.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
-				return cntl.Put(r.Context(), &controllers.PutRequest{
-					Request: controllers.Request{
-						Group:     def.Spec.Group,
-						Version:   version,
-						Kind:      def.Names.Kind,
-						Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
-					},
-					FSConfig: f,
-					Name:     chi.URLParamFromCtx(r.Context(), "name"),
-					Resource: &resource,
-				})
+		result, err := s.fs.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
+			return cntl.Put(r.Context(), &controllers.PutRequest{
+				Request: controllers.Request{
+					Group:     def.Spec.Group,
+					Version:   version,
+					Kind:      def.Names.Kind,
+					Namespace: chi.URLParamFromCtx(r.Context(), "ns"),
+				},
+				FSConfig: f,
+				Name:     chi.URLParamFromCtx(r.Context(), "name"),
+				Resource: &resource,
 			})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-			if err := json.NewEncoder(w).Encode(result); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}))
+		if err := json.NewEncoder(w).Encode(result); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}))
 
-		// delete kind
-		s.mux.Delete(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var (
-				namespace = chi.URLParamFromCtx(r.Context(), "ns")
-				name      = chi.URLParamFromCtx(r.Context(), "name")
-				message   = fmt.Sprintf(
-					"feat: delete %s/%s/%s %s/%s",
-					def.Spec.Group, version, def.Names.Plural,
-					namespace, name,
-				)
+	// delete kind
+	s.mux.Delete(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var (
+			namespace = chi.URLParamFromCtx(r.Context(), "ns")
+			name      = chi.URLParamFromCtx(r.Context(), "name")
+			message   = fmt.Sprintf(
+				"feat: delete %s/%s/%s %s/%s",
+				def.Spec.Group, version, def.Names.Plural,
+				namespace, name,
 			)
+		)
 
-			result, err := s.fs.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
-				return cntl.Delete(r.Context(), &controllers.DeleteRequest{
-					Request: controllers.Request{
-						Group:     def.Spec.Group,
-						Version:   version,
-						Kind:      def.Names.Kind,
-						Namespace: namespace,
-					},
-					FSConfig: f,
-					Name:     name,
-				})
+		result, err := s.fs.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
+			return cntl.Delete(r.Context(), &controllers.DeleteRequest{
+				Request: controllers.Request{
+					Group:     def.Spec.Group,
+					Version:   version,
+					Kind:      def.Names.Kind,
+					Namespace: namespace,
+				},
+				FSConfig: f,
+				Name:     name,
 			})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-			if err := json.NewEncoder(w).Encode(result); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}))
-	}
+		if err := json.NewEncoder(w).Encode(result); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}))
 
 	return nil
 }
@@ -269,7 +279,7 @@ func (s *Server) handleSourceDefinitions(w http.ResponseWriter, r *http.Request)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if err := json.NewEncoder(w).Encode(s.definitions); err != nil {
+	if err := json.NewEncoder(w).Encode(s.cfg.Definitions); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

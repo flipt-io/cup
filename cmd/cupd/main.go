@@ -1,38 +1,40 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
 
-	"github.com/urfave/cli/v2"
+	"github.com/peterbourgon/ff/v3/ffcli"
+	"go.flipt.io/cup/pkg/config"
 	"golang.org/x/exp/slog"
 )
 
 func main() {
-	app := &cli.App{
-		Name: "cupd",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "config",
-				Aliases: []string{"c"},
-				Value:   "cupd.json",
-				Usage:   "Parse configuration from `FILE`",
-			},
+	slog.SetDefault(slog.New(slog.NewTextHandler(
+		os.Stdout,
+		&slog.HandlerOptions{
+			Level: slog.LevelDebug,
 		},
-		Commands: []*cli.Command{
+	)))
+
+	cfg := &config.Config{}
+	root := &ffcli.Command{
+		Name: "cupd",
+		Subcommands: []*ffcli.Command{
 			{
-				Name:    "serve",
-				Aliases: []string{"s"},
-				Usage:   "run the cupd server",
-				Action:  serve,
+				Name:       "serve",
+				ShortUsage: "cupd serve [flags]",
+				ShortHelp:  "Run the cupd server",
+				FlagSet:    cfg.FlagSet(),
+				Exec: func(ctx context.Context, args []string) error {
+					return serve(ctx, cfg)
+				},
 			},
 		},
 	}
 
-	fmt.Println(banner)
-
-	if err := app.Run(os.Args); err != nil {
-		slog.Error("Exiting", "error", err)
+	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
+		slog.Error("Exiting...", "error", err)
 		os.Exit(1)
 	}
 }

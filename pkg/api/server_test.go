@@ -16,29 +16,54 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/api/core"
+	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controllers/template"
 	"go.flipt.io/cup/pkg/encoding"
 	"go.flipt.io/cup/pkg/source/mem"
 	"golang.org/x/exp/slog"
 )
 
-var testDef = &core.ResourceDefinition{
-	APIVersion: "cup.flipt.io/v1alpha1",
-	Kind:       "ResourceDefinition",
-	Metadata: core.Metadata{
-		Name: "resources.test.cup.flipt.io",
-	},
-	Names: core.Names{
-		Kind:     "Resource",
-		Singular: "resource",
-		Plural:   "resources",
-	},
-	Spec: core.ResourceDefinitionSpec{
-		Group: "test.cup.flipt.io",
-		Versions: map[string]json.RawMessage{
-			"v1alpha1": []byte(`{"type":"object"}`),
+var (
+	testDef = &core.ResourceDefinition{
+		APIVersion: "cup.flipt.io/v1alpha1",
+		Kind:       "ResourceDefinition",
+		Metadata: core.Metadata{
+			Name: "resources.test.cup.flipt.io",
 		},
-	},
+		Names: core.Names{
+			Kind:     "Resource",
+			Singular: "resource",
+			Plural:   "resources",
+		},
+		Spec: core.ResourceDefinitionSpec{
+			Group: "test.cup.flipt.io",
+			Versions: map[string]json.RawMessage{
+				"v1alpha1": []byte(`{"type":"object"}`),
+			},
+		},
+	}
+)
+
+func config(t *testing.T, controller api.Controller) *api.Configuration {
+	t.Helper()
+
+	name := "test"
+	return &api.Configuration{
+		Definitions: containers.MapStore[string, *core.ResourceDefinition]{
+			"test.cup.flipt.io/v1alpha1/resources": testDef,
+		},
+		Controllers: containers.MapStore[string, api.Controller]{
+			name: controller,
+		},
+		Bindings: containers.MapStore[string, *core.Binding]{
+			name: &core.Binding{
+				Spec: core.BindingSpec{
+					Controller: name,
+					Resources:  []string{"test.cup.flipt.io/v1alpha1/resources"},
+				},
+			},
+		},
+	}
 }
 
 func TestMain(m *testing.M) {
@@ -54,14 +79,13 @@ func TestMain(m *testing.M) {
 
 func Test_Server_Definitions(t *testing.T) {
 	var (
-		fss   = mem.New()
-		cntrl = template.New()
+		fss    = mem.New()
+		cntrl  = template.New()
+		config = config(t, cntrl)
 	)
 
-	server, err := api.NewServer(fss)
+	server, err := api.NewServer(fss, config)
 	require.NoError(t, err)
-
-	server.Register(cntrl, testDef)
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -76,9 +100,7 @@ func Test_Server_Definitions(t *testing.T) {
 	var definitions map[string]*core.ResourceDefinition
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&definitions))
 
-	assert.Equal(t, map[string]*core.ResourceDefinition{
-		"test.cup.flipt.io/v1alpha1/resources": testDef,
-	}, definitions)
+	assert.Equal(t, map[string]*core.ResourceDefinition(config.Definitions), definitions)
 }
 
 func Test_Server_Get(t *testing.T) {
@@ -86,11 +108,10 @@ func Test_Server_Get(t *testing.T) {
 	fss.AddFS("main", osfs.New("testdata"))
 
 	cntrl := template.New()
+	config := config(t, cntrl)
 
-	server, err := api.NewServer(fss)
+	server, err := api.NewServer(fss, config)
 	require.NoError(t, err)
-
-	require.NoError(t, server.Register(cntrl, testDef))
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -124,12 +145,12 @@ func Test_Server_Get(t *testing.T) {
 func Test_Server_List(t *testing.T) {
 	fss := mem.New()
 	fss.AddFS("main", osfs.New("testdata"))
+
 	cntrl := template.New()
+	config := config(t, cntrl)
 
-	server, err := api.NewServer(fss)
+	server, err := api.NewServer(fss, config)
 	require.NoError(t, err)
-
-	require.NoError(t, server.Register(cntrl, testDef))
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -183,11 +204,10 @@ func Test_Server_Put(t *testing.T) {
 	fss.AddFS("main", fs)
 
 	cntrl := template.New()
+	config := config(t, cntrl)
 
-	server, err := api.NewServer(fss)
+	server, err := api.NewServer(fss, config)
 	require.NoError(t, err)
-
-	require.NoError(t, server.Register(cntrl, testDef))
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
@@ -242,12 +262,12 @@ func Test_Server_Delete(t *testing.T) {
 
 	fss := mem.New()
 	fss.AddFS("main", fs)
+
 	cntrl := template.New()
+	config := config(t, cntrl)
 
-	server, err := api.NewServer(fss)
+	server, err := api.NewServer(fss, config)
 	require.NoError(t, err)
-
-	require.NoError(t, server.Register(cntrl, testDef))
 
 	srv := httptest.NewServer(server)
 	t.Cleanup(srv.Close)
