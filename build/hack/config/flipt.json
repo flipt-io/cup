@@ -1,0 +1,13 @@
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "Controller",
+  "metadata": {
+    "name": "flipt"
+  },
+  "spec": {
+    "type": "wasm",
+    "spec": {
+      "path": "flipt.wasm"
+    }
+  }
+}

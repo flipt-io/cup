@@ -1,0 +1,54 @@
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "ResourceDefinition",
+  "metadata": {
+    "name": "flags.flipt.io"
+  },
+  "names": {
+    "kind": "Flag",
+    "singular": "flag",
+    "plural": "flags"
+  },
+  "spec": {
+    "group": "flipt.io",
+    "versions": {
+      "v1alpha1": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "enum": ["", "FLAG_TYPE_VARIANT", "FLAG_TYPE_BOOLEAN"] },
+          "enabled": { "type": "boolean" },
+          "description": { "type": "string" },
+          "variants": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "description": { "type": "string" },
+                "attachment": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "rules": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object"
+            }
+          },
+          "rollouts": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
