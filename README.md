@@ -22,6 +22,14 @@
 - [ ] 🛰️ Track open proposals directly in `cup`
 - [ ] 🔒 Secure access via authorization policies
 
+## Table of Contents
+
+- [Dependencies](#dependencies)
+- [Building](#building)
+  - [`cupd` Server](#cupd-server)
+    - [Configuration](#configuration)
+  - [`cup` CLI](#cupd-cli)
+
 ## Dependencies
 
 - Go (>= 1.20)
