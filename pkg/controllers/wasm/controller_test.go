@@ -261,10 +261,10 @@ func compileTestController(t *testing.T) ([]byte, bool) {
 	})
 
 	cmd = exec.Command("sh", "-c", fmt.Sprintf("%s build -o %[1]s testdata/main.go && cat %[1]s", goCommand, tmp.Name()))
-	cmd.Env = append([]string{
+	cmd.Env = append(os.Environ(),
 		"GOOS=wasip1",
 		"GOARCH=wasm",
-	}, os.Environ()...)
+	)
 
 	data, err := cmd.CombinedOutput()
 	if !assert.NoError(t, err) {
