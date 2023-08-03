@@ -28,7 +28,11 @@
 - [Building](#building)
   - [`cupd` Server](#cupd-server)
     - [Configuration](#configuration)
-  - [`cup` CLI](#cupd-cli)
+      - [General](#general-configuration)
+      - [Resource Definitions](#resource-definitions)
+      - [Controllers](#controller)
+      - [Bindings](#bindings)
+  - [`cup` CLI](#cup-cli)
 
 ## Dependencies
 
