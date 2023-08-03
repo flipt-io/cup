@@ -110,16 +110,18 @@ Depending on the `apiVersion` and `kind` of the resource, they each get treated 
 
 Each resource definition configuration payload include the following top-level fields:
 
-| Key        | Value                     |
-|------------|---------------------------|
-| apiVersion | `"cup.flipt.io/v1alpha1"` |
-| kind       | `"ResourceDefinition"`    |
-| metadata   | <Metadata>                |
-| names      | <Names>                   |
-| spec       | <ResourceDefinitionSpec>  |
+| Key        | Value                      |
+|------------|----------------------------|
+| apiVersion | `"cup.flipt.io/v1alpha1"`  |
+| kind       | `"ResourceDefinition"`     |
+| metadata   | `<Metadata>`               |
+| names      | `<Names>`                  |
+| spec       | `<ResourceDefinitionSpec>` |
 
 <details>
+
 <summary>Example Flipt flag resource definition</summary>
+
 ```json
 {
   "apiVersion": "cup.flipt.io/v1alpha1",
@@ -176,6 +178,7 @@ Each resource definition configuration payload include the following top-level f
   }
 }
 ```
+
 </details>
 
 ### `cup` CLI
