@@ -47,9 +47,9 @@ A `cupd` instance has a number of configuration mechanisms.
 It first helps to understand the different mechanisms involved in configuring a Cup server.
 
 1. General top-level `cupd` configuration
-2. Resource definitions
-3. Controller configuration
-4. API resource / controller bindings
+2. Resource Definitions
+3. Controllers
+4. Bindings
 
 ##### General Configuration
 
@@ -175,6 +175,132 @@ Each resource definition configuration payload include the following top-level f
         "additionalProperties": false
       }
     }
+  }
+}
+```
+
+</details>
+
+##### Controllers
+
+Controllers are the engines which drive reading and writing changes to target configuration sources (directories, repositories etc.).
+Internally, Cup abstracts away the details of Git repositories, commits, trees and pull requests.
+Controllers focus on handling individual actions over a mounted target directory.
+
+These actions currently include:
+
+- get
+- list
+- put
+- delete
+
+Each controller is configured via a JSON file in the `-api-resources` directory.
+The files contain the following top-level fields:
+
+| Key        | Value                     |
+|------------|---------------------------|
+| apiVersion | `"cup.flipt.io/v1alpha1"` |
+| kind       | `"Controller"        `    |
+| metadata   | `<Metadata>`              |
+| spec       | `<ControllerSpec>`        |
+
+There are currently two types of controller configurable in Cup:
+
+- Template
+- WASM
+
+**Template**
+
+Is a simple, builtin controller which uses Go's `text/template` to perform 1:1 API resource to file in repo mappings.
+
+There exist two templates:
+
+1. Directory template
+
+This is used during `list` operations to map a namespace onto target directory exclusively containing files which each represent a single resource instance.
+It can be configured with glob syntax to further constrain, which files in a target directory are considered resources.
+
+2. Path template
+
+This is used during `get`, `put` and `delete` operations to identify the particular file the resource should be read from, written to or deleted respectively.
+
+<details>
+
+<summary>Example template controller</summary>
+
+```json
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "Controller",
+  "metadata": {
+    "name": "some-template-controller"
+  },
+  "spec": {
+    "type": "template",
+    "spec": {
+      "directory_template": "{{ .Namespace }}/*.json"
+      "path_template": "{{ .Namespace }}/{{ .Group }}-{{ .Version }}-{{ .Kind }}-{{ .Name }}.json"
+    }
+  }
+}
+```
+
+</details>
+
+**WASM**
+
+The WASM controller is an extension point that opens Cup up to the full power of languages which can be compiled to WASM with the WASIP1 extensions.
+Given your controller can be expressed as a command-line tool, conforming to Cup's well defined set of sub-commands and standard I/O expectations, implemented in a language compiled to WASM with WASIP1, then it can be used in Cup.
+
+Given your resulting controller WASM binary is present and reachable on the filesystem by `cupd`, then it can be leveraged by Cup to handle your particular resource management needs.
+
+The Controller resource specification includes a single field `path` which should point to where the WASM implementation exists on disk.
+This path will resolve relative to the `-api-resources` directory.
+
+<details>
+
+<summary>Example Flipt WASM controller</summary>
+
+```json
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "Controller",
+  "metadata": {
+    "name": "flipt"
+  },
+  "spec": {
+    "type": "wasm",
+    "spec": {
+      "path": "flipt.wasm"
+    }
+  }
+}
+```
+
+</details>
+
+##### Bindings
+
+Bindings are the last an crucial mechanism for exposing resources via the Cup API.
+A binding defines which resources types should be exposed and what controller should handle their operations.
+
+<details>
+
+<summary>Example Binding for Flipt resources and associated controller</summary>
+
+```json
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "Binding",
+  "metadata": {
+    "name": "flipt"
+  },
+  "spec": {
+    "controller": "flipt",
+    "resources": [
+      "flipt.io/v1alpha1/flags",
+      "flipt.io/v1alpha1/segments"
+    ]
   }
 }
 ```
