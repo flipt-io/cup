@@ -6,7 +6,7 @@ import (
 	"dagger.io/dagger"
 )
 
-func FliptCup(ctx context.Context, client *dagger.Client, base *dagger.Container) (*dagger.Container, error) {
+func FliptCup(ctx context.Context, client *dagger.Client, base *dagger.Container, platform dagger.Platform) (*dagger.Container, error) {
 	flipt := base.WithEnvVariable("GOOS", "wasip1").
 		WithEnvVariable("GOARCH", "wasm").
 		WithExec([]string{
@@ -15,7 +15,7 @@ func FliptCup(ctx context.Context, client *dagger.Client, base *dagger.Container
 		File("flipt.wasm")
 
 	return client.
-		Container().
+		Container(dagger.ContainerOpts{Platform: platform}).
 		From("alpine:3.18").
 		WithExec([]string{"mkdir", "-p", "/var/run/cupd"}).
 		WithWorkdir("/var/run/cupd").
