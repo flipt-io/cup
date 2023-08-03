@@ -9,7 +9,14 @@
   <img src="https://github.com/flipt-io/cup/assets/1253326/602edfd0-8da3-4b37-856a-8b620af0d264" alt="CUP" width="240" />
 </div>
 
-`cup` brings Git repositories to life
+Cup brings Git repositories to life.
+
+A configurable and extensible server for managing and exposing API resources directly from a target Git repository.
+It exposes a Kubernetes-like declarative API, which organizes resources into typed (group + version + kind) sets.
+Resources can be listed, read, updated and deleted. When changes to the state of a resource are made, the resulting
+calculated difference is automatically proposed as a pull or merge request on a target Git SCM.
+How resources map to and from API request payloads to files in your repository is handled by [Controllers](#controllers).
+Controllers are configurable and broadly extensible through the power of WASM via the [Wazero](htts://github.com/tetratelabs/wazero) runtime.
 
 ## Features
 
@@ -30,7 +37,7 @@
     - [Configuration](#configuration)
       - [General](#general-configuration)
       - [Resource Definitions](#resource-definitions)
-      - [Controllers](#controller)
+      - [Controllers](#controllers)
       - [Bindings](#bindings)
   - [`cup` CLI](#cup-cli)
 
