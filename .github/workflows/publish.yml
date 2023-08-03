@@ -1,6 +1,8 @@
 name: publish
 on:
-  pull_request:
+  push:
+    branches:
+      - 'main'
 
 jobs:
   unit:
@@ -14,9 +16,6 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: '1.20'
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
 
       - uses: actions/checkout@v3
 
