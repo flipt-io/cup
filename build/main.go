@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"dagger.io/dagger"
+	"github.com/containerd/containerd/platforms"
 	"github.com/urfave/cli/v2"
 	"go.flipt.io/cup/build/hack"
 	"golang.org/x/exp/slog"
@@ -116,7 +117,7 @@ func main() {
 									username,
 									client.SetSecret("registry-password", password),
 								).Publish(ctx.Context,
-									fmt.Sprintf("%s/%s/%s", registry, username, ctx.String("tag")),
+									fmt.Sprintf("%s/%s/%s", registry, username, ctx.String("image-name")),
 									dagger.ContainerPublishOpts{
 										PlatformVariants: variants,
 									},
@@ -163,10 +164,14 @@ func build(ctx context.Context) error {
 
 func withBase(ctx context.Context, fn func(client *dagger.Client, base *dagger.Container, platform dagger.Platform) error, opts ...option) error {
 	return withClient(ctx, func(client *dagger.Client, platform dagger.Platform) error {
-		base := client.Container(dagger.ContainerOpts{Platform: platform}).
+		p := platforms.MustParse(string(platform))
+
+		base := client.Container().
 			From("golang:1.21rc3-alpine3.18").
 			WithEnvVariable("GOCACHE", goBuildCachePath).
 			WithEnvVariable("GOMODCACHE", goModCachePath).
+			WithEnvVariable("GOOS", p.OS).
+			WithEnvVariable("GOARCH", p.Architecture).
 			WithExec([]string{"apk", "add", "gcc", "build-base"}).
 			WithMountedDirectory("/src", client.Host().Directory(".")).
 			WithWorkdir("/src")

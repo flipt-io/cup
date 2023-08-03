@@ -29,7 +29,7 @@ jobs:
       - name: Run Dagger pipeline
         env:
           CUP_BUILD_REGISTRY: ghcr.io
-          CUP_BUILD_USERNAME: flipt-io
+          CUP_BUILD_USERNAME: "${{ github.repository_owner }}"
           CUP_BUILD_PASSWORD: "${{ secrets.GITHUB_TOKEN }}"
           CUP_BUILD_IMAGE_NAME: cup/flipt:latest
         run: ./build.sh hack fliptcup:publish
