@@ -43,142 +43,55 @@ go install ./cmd/cupd/...
 
 #### Configuration
 
-A `cupd` instance is configured via a `cupd.json` configuration file.
+A `cupd` instance has a number of configuration mechanisms.
+It first helps to understand the different mechanisms involved in configuring `cup`.
+
+1. General top-level `cupd` configuration
+2. Resource definitions
+3. Controller configuration
+4. API resource / controller bindings
+
+**General Configuration**
+
+This is the top-level set of configuration which can be provided via CLI flags, environment variables or a configuration yaml file.
+You can see what `cupd` requires by simple invoking the following:
+```
+➜  cupd serve -h
+DESCRIPTION
+  Run the cupd server
+
+USAGE
+  cupd serve [flags]
+
+FLAGS
+  -api-address :8181    server listen address
+  -api-git-repo string  target git repository URL
+  -api-git-scm github   SCM type (one of [github, gitea])
+  -api-local-path .     path to local source directory
+  -api-resources .      path to server configuration directory (controllers, definitions and bindings)
+  -api-source local     source type (one of [local, git])
+```
+
+Each of the flags can be altneratively provided as an environment variable.
+The convention for environment variable naming is: `CUPD{{ uppercase(replace(flag, "-", "_")) }}`.
+
+For example, `-api-address` can be expressed via `CUPD_API_ADDRESS`.
+
+Finally, a configuration YAML file can be used instead.
+This also follows a naming convention which tokenizes flag keys on `-`.
 
 <details>
 
-<summary>Configuring cup to manage Flipt resources</summary>
+<summary>Example cup config.yml</summary>
 
-The following contains an example configuration for exposing [Flipt](https://flipt.io) feature flag state via `cup`.
-
-The configuration exposes the two primary top-level Flipt resources:
-
-- Flags
-- Segments
-
-The WASM runtime can be built using `gotip` (requires Go 1.21+) against the Flipt controller in this project:
-
-```bash
-cd ext/controllers/flipt.io
-
-GOOS=wasip1 GOARCH=wasm gotip build -o v1alpha1/flipt.wasm ./v1alpha1/cmd/flipt/*.go
-```
-
-`cupd.json` configuration contents:
-
-```json
-{
-  "api": {
-    "address": ":8181",
-    "source": {
-      "type": "git",
-      "git": {
-        "url": "http://username:PAT@github.com/yourrepo/something.git",
-        "scm": "github"
-      }
-    },
-    "resources": {
-      "flipt.io/v1alpha1/flags": {
-        "controller": "flipt"
-      },
-      "flipt.io/v1alpha1/segments": {
-        "controller": "flipt"
-      }
-    }
-  },
-  "controllers": {
-    "flipt": {
-      "type": "wasm",
-      "wasm": {
-        "executable": "ext/controllers/flipt.io/v1alpha1/flipt.wasm"
-      }
-    }
-  },
-  "definitions": [
-    {
-      "inline": {
-        "apiVersion": "cup.flipt.io/v1alpha1",
-        "kind": "ResourceDefinition",
-        "metadata": {
-          "name": "flags.flipt.io"
-        },
-        "names": {
-          "kind": "Flag",
-          "singular": "flag",
-          "plural": "flags"
-        },
-        "spec": {
-          "group": "flipt.io",
-          "versions": {
-            "v1alpha1": {
-              "type": "object",
-              "properties": {
-                "key": { "type": "string" },
-                "name": { "type": "string" },
-                "type": { "enum": ["", "FLAG_TYPE_VARIANT", "FLAG_TYPE_BOOLEAN"] },
-                "enabled": { "type": "boolean" },
-                "description": { "type": "string" },
-                "variants": {
-                  "type": ["array", "null"],
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "key": { "type": "string" },
-                      "description": { "type": "string" },
-                      "attachment": {
-                        "type": "object",
-                        "additionalProperties": true
-                      }
-                    }
-                  }
-                },
-                "rules": {
-                  "type": ["array", "null"],
-                  "items": {
-                    "type": "object"
-                  }
-                },
-                "rollouts": {
-                  "type": ["array", "null"],
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          }
-        }
-      }
-    },
-    {
-      "inline": {
-        "apiVersion": "cup.flipt.io/v1alpha1",
-        "kind": "ResourceDefinition",
-        "metadata": {
-          "name": "segments.flipt.io"
-        },
-        "names": {
-          "kind": "Segment",
-          "singular": "segment",
-          "plural": "segments"
-        },
-        "spec": {
-          "group": "flipt.io",
-          "versions": {
-            "v1alpha1": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean" }
-              },
-              "additionalProperties": false
-            }
-          }
-        }
-      }
-    }
-  ]
-}
+```yaml
+api:
+  address: ":8181"
+  source: "git"
+  resources: "/etc/cupd/config/resources"
+  git:
+    scm: "github"
+    repo: "http://username:PAT@github.com/yourrepo/something.git"
 ```
 
 </details>
