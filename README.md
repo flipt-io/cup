@@ -219,7 +219,7 @@ The files contain the following top-level fields:
 | Key        | Value                     |
 |------------|---------------------------|
 | apiVersion | `"cup.flipt.io/v1alpha1"` |
-| kind       | `"Controller"        `    |
+| kind       | `"Controller"`            |
 | metadata   | `<Metadata>`              |
 | spec       | `<ControllerSpec>`        |
 
@@ -270,6 +270,9 @@ This is used during `get`, `put` and `delete` operations to identify the particu
 
 The WASM controller is an extension point that opens Cup up to the full power of languages which can be compiled to WASM with the WASIP1 extensions.
 Given your controller can be expressed as a command-line tool, conforming to Cup's well defined set of sub-commands and standard I/O expectations, implemented in a language compiled to WASM with WASIP1, then it can be used in Cup.
+
+To learn more about the binary API required for a Cup WASM controller checkough the [Design](./docs/DESIGN.md) document in this repo.
+Cup is a very early prototype and this design is likely to change and open to suggestions.
 
 Given your resulting controller WASM binary is present and reachable on the filesystem by `cupd`, then it can be leveraged by Cup to handle your particular resource management needs.
 
