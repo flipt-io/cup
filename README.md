@@ -44,14 +44,14 @@ go install ./cmd/cupd/...
 #### Configuration
 
 A `cupd` instance has a number of configuration mechanisms.
-It first helps to understand the different mechanisms involved in configuring `cup`.
+It first helps to understand the different mechanisms involved in configuring a Cup server.
 
 1. General top-level `cupd` configuration
 2. Resource definitions
 3. Controller configuration
 4. API resource / controller bindings
 
-**General Configuration**
+##### General Configuration
 
 This is the top-level set of configuration which can be provided via CLI flags, environment variables or a configuration yaml file.
 You can see what `cupd` requires by simple invoking the following:
@@ -71,6 +71,9 @@ FLAGS
   -api-resources .      path to server configuration directory (controllers, definitions and bindings)
   -api-source local     source type (one of [local, git])
 ```
+
+One thing of note is the `-api-resources` flag which configures the location of `cupd`'s API resource directory.
+This directory should contain a bunch of API resource instances which we will talk about in the following configuration sections.
 
 Each of the flags can be altneratively provided as an environment variable.
 The convention for environment variable naming is: `CUPD{{ uppercase(replace(flag, "-", "_")) }}`.
@@ -94,6 +97,85 @@ api:
     repo: "http://username:PAT@github.com/yourrepo/something.git"
 ```
 
+</details>
+
+##### Resource Definitions
+
+Resource definitions live in the directory identified by `-api-resources`.
+Each definition contains the group, kind and versioned schemas for resource types handled by Cup.
+These definitions are heavily inspired by Kubernetes concept of Customer Resource Definitions.
+
+Any file in the API resources directory ending in `.json` is currently parsed and interpretted.
+Depending on the `apiVersion` and `kind` of the resource, they each get treated accordingly.
+
+Each resource definition configuration payload include the following top-level fields:
+
+| Key        | Value                     |
+|------------|---------------------------|
+| apiVersion | `"cup.flipt.io/v1alpha1"` |
+| kind       | `"ResourceDefinition"`    |
+| metadata   | <Metadata>                |
+| names      | <Names>                   |
+| spec       | <ResourceDefinitionSpec>  |
+
+<details>
+<summary>Example Flipt flag resource definition</summary>
+```json
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "ResourceDefinition",
+  "metadata": {
+    "name": "flags.flipt.io"
+  },
+  "names": {
+    "kind": "Flag",
+    "singular": "flag",
+    "plural": "flags"
+  },
+  "spec": {
+    "group": "flipt.io",
+    "versions": {
+      "v1alpha1": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "enum": ["", "FLAG_TYPE_VARIANT", "FLAG_TYPE_BOOLEAN"] },
+          "enabled": { "type": "boolean" },
+          "description": { "type": "string" },
+          "variants": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "description": { "type": "string" },
+                "attachment": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "rules": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object"
+            }
+          },
+          "rollouts": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
+```
 </details>
 
 ### `cup` CLI
