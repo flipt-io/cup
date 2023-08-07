@@ -13,7 +13,7 @@ Cup brings Git repositories to life.
 
 A configurable and extensible server for managing and exposing API resources directly from a target Git repository.
 It exposes a Kubernetes-like declarative API, which organizes resources into typed (group + version + kind) sets.
-Resources can be listed, read, updated and deleted. When changes to the state of a resource are made, the resulting
+Resources can be listed, read, updated, and deleted. When changes to the state of a resource are made, the resulting
 calculated difference is automatically proposed as a pull or merge request on a target Git SCM.
 How resources map to and from API request payloads to files in your repository is handled by [Controllers](#controllers).
 Controllers are configurable and broadly extensible through the power of WASM via the [Wazero](htts://github.com/tetratelabs/wazero) runtime.
@@ -56,7 +56,7 @@ For now, to play with `cup` you will need to clone this project and build from s
 ### `cupd` Server
 
 `cupd` is the server portion of the `cup` project.
-It handles sources to target repositories, manifesting resource APIs and handling transformations through resource controllers.
+It handles sources to target repositories, manifesting resource APIs, and transformations through resource controllers.
 
 ```
 go install ./cmd/cupd/...
@@ -74,8 +74,8 @@ It first helps to understand the different mechanisms involved in configuring a 
 
 ##### General Configuration
 
-This is the top-level set of configuration which can be provided via CLI flags, environment variables or a configuration yaml file.
-You can see what `cupd` requires by simple invoking the following:
+This is the top-level set of configuration which can be provided via CLI flags, environment variables, or a configuration YAML file.
+You can see what `cupd` requires by simply invoking the following:
 ```
 ➜  cupd serve -h
 DESCRIPTION
@@ -96,13 +96,13 @@ FLAGS
 One thing of note is the `-api-resources` flag which configures the location of `cupd`'s API resource directory.
 This directory should contain a bunch of API resource instances which we will talk about in the following configuration sections.
 
-Each of the flags can be altneratively provided as an environment variable.
+Each of the flags can be alternatively provided as an environment variable.
 The convention for environment variable naming is: `CUPD{{ uppercase(replace(flag, "-", "_")) }}`.
 
 For example, `-api-address` can be expressed via `CUPD_API_ADDRESS`.
 
 Finally, a configuration YAML file can be used instead.
-This also follows a naming convention which tokenizes flag keys on `-`.
+This also follows a naming convention that tokenizes flag keys on `-`.
 
 <details>
 
@@ -124,12 +124,12 @@ api:
 
 Resource definitions live in the directory identified by `-api-resources`.
 Each definition contains the group, kind and versioned schemas for resource types handled by Cup.
-These definitions are heavily inspired by Kubernetes concept of Customer Resource Definitions.
+These definitions are heavily inspired by Kubernetes' concept of Customer Resource Definitions.
 
-Any file in the API resources directory ending in `.json` is currently parsed and interpretted.
+Any file in the API resources directory ending in `.json` is currently parsed and interpreted.
 Depending on the `apiVersion` and `kind` of the resource, they each get treated accordingly.
 
-Each resource definition configuration payload include the following top-level fields:
+Each resource definition configuration payload includes the following top-level fields:
 
 | Key        | Value                      |
 |------------|----------------------------|
@@ -204,8 +204,8 @@ Each resource definition configuration payload include the following top-level f
 
 ##### Controllers
 
-Controllers are the engines which drive reading and writing changes to target configuration sources (directories, repositories etc.).
-Internally, Cup abstracts away the details of Git repositories, commits, trees and pull requests.
+Controllers are the engines that drive reading and writing changes to target configuration sources (directories, repositories etc.).
+Internally, Cup abstracts away the details of Git repositories, commits, trees, and pull requests.
 Controllers focus on handling individual actions over a mounted target directory.
 
 These actions currently include:
@@ -232,18 +232,18 @@ There are currently two types of controller configurable in Cup:
 
 **Template**
 
-Is a simple, builtin controller which uses Go's `text/template` to perform 1:1 API resource to file in repo mappings.
+Is a simple, built-in controller which uses Go's `text/template` to perform 1:1 API resource to file in repo mappings.
 
 There exist two templates:
 
-1. Directory template
+1. Directory Template
 
-This is used during `list` operations to map a namespace onto target directory exclusively containing files which each represent a single resource instance.
+This is used during `list` operations to map a namespace onto a target directory exclusively containing files that each represent a single resource instance.
 It can be configured with glob syntax to further constrain, which files in a target directory are considered resources.
 
-2. Path template
+2. Path Template
 
-This is used during `get`, `put` and `delete` operations to identify the particular file the resource should be read from, written to or deleted respectively.
+This is used during `get`, `put`, and `delete` operations to identify the particular file the resource should be read from, written to, or deleted respectively.
 
 <details>
 
@@ -271,9 +271,9 @@ This is used during `get`, `put` and `delete` operations to identify the particu
 **WASM**
 
 The WASM controller is an extension point that opens Cup up to the full power of languages which can be compiled to WASM with the WASIP1 extensions.
-Given your controller can be expressed as a command-line tool, conforming to Cup's well defined set of sub-commands and standard I/O expectations, implemented in a language compiled to WASM with WASIP1, then it can be used in Cup.
+Given your controller can be expressed as a command-line tool, conforming to Cup's well-defined set of sub-commands and standard I/O expectations, implemented in a language compiled to WASM with WASIP1, then it can be used in Cup.
 
-To learn more about the binary API required for a Cup WASM controller checkough the [Design](./docs/DESIGN.md) document in this repo.
+To learn more about the binary API required for a Cup WASM controller, check out the [Design](./docs/DESIGN.md) document in this repo.
 Cup is a very early prototype and this design is likely to change and open to suggestions.
 
 Given your resulting controller WASM binary is present and reachable on the filesystem by `cupd`, then it can be leveraged by Cup to handle your particular resource management needs.
@@ -305,8 +305,8 @@ This path will resolve relative to the `-api-resources` directory.
 
 ##### Bindings
 
-Bindings are the last an crucial mechanism for exposing resources via the Cup API.
-A binding defines which resources types should be exposed and what controller should handle their operations.
+Bindings are the last crucial mechanism for exposing resources via the Cup API.
+A binding defines which resource types should be exposed and what controller should handle their operations.
 
 <details>
 
@@ -333,7 +333,7 @@ A binding defines which resources types should be exposed and what controller sh
 
 ### `cup` CLI
 
-`cup` is a CLI which is heavily influenced by `kubectl`.
+`cup` is a CLI that is heavily influenced by `kubectl`.
 It can be used locally to interact and introspect into a running `cupd`.
 
 ```
@@ -372,7 +372,7 @@ Built on:
 
 - The [Go](https://go.dev/) programming language
 - The [Wazero](https://github.com/tetratelabs/wazero/) Go WASM runtime
-- The wonderful SCMs (Gitea, GitHub etc.)
+- The wonderful SCMs (Gitea, GitHub, etc.)
 
 Inspired by:
 
