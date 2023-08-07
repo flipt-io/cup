@@ -17,7 +17,7 @@
         "properties": {
           "key": { "type": "string" },
           "name": { "type": "string" },
-          "type": { "enum": ["", "FLAG_TYPE_VARIANT", "FLAG_TYPE_BOOLEAN"] },
+          "type": { "enum": ["", "VARIANT_FLAG_TYPE", "BOOLEAN_FLAG_TYPE"] },
           "enabled": { "type": "boolean" },
           "description": { "type": "string" },
           "variants": {
