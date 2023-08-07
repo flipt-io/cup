@@ -18,6 +18,8 @@ calculated difference is automatically proposed as a pull or merge request on a 
 How resources map to and from API request payloads to files in your repository is handled by [Controllers](#controllers).
 Controllers are configurable and broadly extensible through the power of WASM via the [Wazero](htts://github.com/tetratelabs/wazero) runtime.
 
+![cup-diagram](https://github.com/flipt-io/cup/assets/1253326/5494a487-796a-4462-a37e-3e4b0d01f5f1)
+
 ## Features
 
 - 🔋 Materialize API resources directly from Git
