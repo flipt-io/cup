@@ -10,8 +10,8 @@ We've taken a heavy dose of inspiration for the API from Kubernetes.
 The object and resource model is a good potential fit for `cup`, so we want to replicate it as much as possible.
 The self-describing API should lend itself well to building additional tooling (CLI, UI, etc.).
 
-While we're taking a lot of inspiration from it, we're don't want to prescribe this tool to a Kubernetes only audience.
-We feel it has scope to be valuable beyond the Kubernetes ecosystem.
+While we're taking a lot of inspiration from it, we don't intend to prescribe this tool to a Kubernetes only audience.
+We feel it has scope and value beyond the Kubernetes ecosystem.
 
 As such, there will be a bit of wheel re-invention at the start of this project.
 We don't want folks to have to have a Kubernetes cluster, or for `cup` to have a hard dependency on all the Kubernetes internals.
@@ -128,15 +128,6 @@ The schema provided is defined using JSONSchema syntax and pertains to what can 
 
 Schemas can be defined per version of the group and kind.
 
-The core specification includes a section which defines where and how to source the Controllers implementation.
-Currently, this `controller` field has a single field `path`.
-This is a relative or absolute path to a target WASM/WASIP1 binary implementation of a Controller.
-
-> Depending on how the resource definition is sourced effects the meaning of the relative path.
-> If the definition is inline within the server configuration, then it is relative to the server processes current working directory.
-> If the definition itself is sourced from a path on disk, then the path will be relative to the same directory as the resource definition.
-> In a potential future where `cup` controller are packaed into OCI images, this path would be relative to inside the OCI artefact itself.
-
 **Example Resource Definition Payload**
 
 ```json
@@ -153,9 +144,6 @@ This is a relative or absolute path to a target WASM/WASIP1 binary implementatio
   },
   "spec": {
     "group": "flipt.io",
-    "controller": {
-      "path": "flipt.wasm",
-    },
     "versions": {
       "v1": {
         "schema": {
@@ -184,6 +172,8 @@ The API will initially have two make categories of functionality:
 
 This section of the API is focussed on supporting callers discovering which types are registered for consumption.
 
+The `/apis` endpoint will list all loaded and available resource definitions.
+
 ### Resource Type Instance APIs
 
 This section of the API is manifested based on the registered resource types for the configured Git repositories.
@@ -197,14 +187,15 @@ Each resource types will have its own relevant prefix of the API surface area, w
 - Putting the state of individual resources
 - Deleting individual resources
 
-Each API section will be prefixed in the form: `/apis/<group>/<version>/<plural>`.
+Each API section will be prefixed in the form: `/apis/<group>/<version>/namespaces/<namespace>/<plural>`.
 
 The following is an explanation of each of the path parameters:
 - `group` refers to the resource type group
 - `version` refers to the resouece type version
 - `plural` refers to the resource type `names.plural` value
+- `namespace` refers to the instance namespace
 
-When a request is made for a particular type, the API Server parses, validates and then delegates the request onto a relevant `Executor`.
+When a request is made for a particular type, the API Server parses, validates and then delegates the request onto a relevant `Controller`.
 
 ### Authentication and Authorization
 
@@ -217,8 +208,22 @@ Likelihood is we explore something close to the RBAC mechanisms available in the
 
 Controllers sit at the heart of `cup`. A single controller handles processing requests for a single resource type via it's associated controller.
 
-A controller manages a single WASM/WASI binary.
-The binary implementations exposes a command-line interfaces with a number of subcommands.
+A controller manages the interface between the API resources and the target filesystem (local or git).
+
+Out of the box there are two implementations of a controller:
+- WASM
+- Template
+
+The `template` implementation is simple and rigid controller which uses Go templates to make decisions on where API resources are stored in the target.
+It simply puts the resources in their JSON form directly on the target and expects to read them in this form from the source.
+
+The `wasm` implementation is an extension point for a variety of custom controllers to be implemented.
+Below is a walkthrough the WASM/WASI interface required to be implemented by a WASM controller instance.
+This is likely to evolve and change heavily over time.
+
+## WASM/WASI Process Interface
+
+The WASM binary implementations expose a command-line interfaces with a number of subcommands.
 
 The controller will take care of adapting each request into an appropriate set of command line arguments and/or STDIN written payloads.
 It then interprets any exit codes and output written to the standard output streams (STDOUT / STDERR).
@@ -230,8 +235,6 @@ This will be mounted as the root filesystem for the WASM runtime.
 
 Given a mutating operation is requested (`put` or `delete`), the controller will support writes on the filesystem.
 The controller will intercept these writes and compose them into a pull request containing the changes made.
-
-## WASM/WASI Process Interface
 
 A single binary is responsible for handling the core controller operations across a group of one or more kinds.
 
