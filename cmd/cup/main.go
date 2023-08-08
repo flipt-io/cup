@@ -19,7 +19,8 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name: "cup",
+		Name:  "cup",
+		Usage: "Manage remote cupd instances",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "config",
@@ -45,7 +46,7 @@ func main() {
 				Name:     "definitions",
 				Aliases:  []string{"defs"},
 				Category: "discovery",
-				Usage:    "List the available resource definitions for a target source",
+				Usage:    "List the available resource definitions",
 				Action: func(ctx *cli.Context) error {
 					cfg, err := parseConfig(ctx)
 					if err != nil {
@@ -79,7 +80,7 @@ func main() {
 					&cli.StringFlag{
 						Name:        "f",
 						Value:       "-",
-						Usage:       "Path to source to apply to target cupd",
+						Usage:       "Path to the resource being applied",
 						DefaultText: "(- STDIN)",
 					},
 				},
