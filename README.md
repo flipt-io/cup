@@ -349,7 +349,7 @@ go install ./cmd/cup/...
 
 ```bash
 NAME:
-   cup - a resource API for Git
+   cup - Manage remote cupd instances
 
 USAGE:
    cup [global options] command [command options] [arguments...]
@@ -358,7 +358,7 @@ COMMANDS:
    config, c  Access the local configuration for the cup CLI.
    help, h    Shows a list of commands or help for one command
    discovery:
-     definitions, defs  List the available resource definitions for a target source
+     definitions, defs  List the available resource definitions
    resource:
      get    Get one or more resources
      apply  Put a resource from file on stdin
