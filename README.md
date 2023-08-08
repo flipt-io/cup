@@ -6,7 +6,7 @@
 ----------------------------
 
 <div align="center">
-  <img src="https://github.com/flipt-io/cup/assets/1253326/602edfd0-8da3-4b37-856a-8b620af0d264" alt="CUP" width="240" />
+  <img src="https://github.com/flipt-io/cup/assets/1253326/d408dbe2-51bf-414e-93ec-603e09d5c1fa" alt="CUP" width="240" />
 </div>
 
 Cup brings Git repositories to life.
@@ -25,7 +25,7 @@ If you have a second, we would greatly appreciate your input on this [feedback f
 
 ## Features
 
-![cup-diagram](https://github.com/flipt-io/cup/assets/1253326/5494a487-796a-4462-a37e-3e4b0d01f5f1)
+![cup-diagram](https://github.com/flipt-io/cup/assets/1253326/7a88d16c-c2c9-4d5b-8547-02c71043fd27)
 
 - 🔋 Materialize API resources directly from Git
 - 🏭 Manage change through a declarative API
