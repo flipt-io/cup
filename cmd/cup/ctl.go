@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"sort"
 	"strings"
@@ -16,6 +17,14 @@ import (
 	"go.flipt.io/cup/pkg/encoding"
 	"golang.org/x/exp/slog"
 )
+
+var editor = "vim"
+
+func init() {
+	if s := os.Getenv("EDITOR"); s != "" {
+		editor = s
+	}
+}
 
 func definitions(cfg config, client *http.Client) error {
 	definitions, err := getDefintions(cfg, client)
@@ -43,44 +52,23 @@ func definitions(cfg config, client *http.Client) error {
 }
 
 func get(cfg config, client *http.Client, typ string, args ...string) error {
-	group, version, kind, err := getGVK(cfg, client, typ)
-	if err != nil {
-		return fmt.Errorf("get: %w", err)
-	}
-
-	endpoint := fmt.Sprintf("%s/apis/%s/%s/namespaces/%s/%s",
-		cfg.Address(),
-		group,
-		version,
-		cfg.Namespace(),
-		kind,
-	)
-
+	var name *string
 	if len(args) == 1 {
-		// get with a single argument will use get instead of list
-		endpoint += "/" + args[0]
+		n := args[0]
+		name = &n
 	}
 
-	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := client.Do(req)
+	body, err := getResourceBody(cfg, client, typ, name)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		_ = resp.Body.Close()
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
 	}()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status: %q", resp.Status)
-	}
-
-	dec := encoding.NewJSONDecoder[core.Resource](resp.Body)
+	dec := encoding.NewJSONDecoder[core.Resource](body)
 	resources, err := encoding.DecodeAll[core.Resource](dec)
 	if err != nil {
 		return fmt.Errorf("decoding resources: %w", err)
@@ -130,18 +118,97 @@ func get(cfg config, client *http.Client, typ string, args ...string) error {
 	return nil
 }
 
-func apply(cfg config, client *http.Client, source string) (err error) {
-	var (
-		buf = &bytes.Buffer{}
-		rd  = os.Stdin
+func getResourceBody(cfg config, client *http.Client, typ string, name *string) (io.ReadCloser, error) {
+	group, version, kind, err := getGVK(cfg, client, typ)
+	if err != nil {
+		return nil, fmt.Errorf("get: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("%s/apis/%s/%s/namespaces/%s/%s",
+		cfg.Address(),
+		group,
+		version,
+		cfg.Namespace(),
+		kind,
 	)
 
-	if source != "-" {
-		rd, err = os.Open(source)
-		if err != nil {
-			return
-		}
+	if name != nil {
+		endpoint += "/" + *name
 	}
+
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %q", resp.Status)
+	}
+
+	return resp.Body, nil
+}
+
+func edit(cfg config, client *http.Client, typ, name string) (err error) {
+	body, err := getResourceBody(cfg, client, typ, &name)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	dec := encoding.NewJSONDecoder[core.Resource](body)
+	resources, err := encoding.DecodeAll[core.Resource](dec)
+	if err != nil {
+		return fmt.Errorf("decoding resources: %w", err)
+	}
+
+	if len(resources) != 1 {
+		return fmt.Errorf("unexpected number of resources: %d, expected 1", len(resources))
+	}
+
+	f, err := os.CreateTemp("", "cup-*.json")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+
+	enc := encoding.NewJSONEncoder[core.Resource](f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(resources[0]); err != nil {
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	cmd := exec.Command("sh", "-c", editor+" "+f.Name())
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	fi, err := os.Open(f.Name())
+	if err != nil {
+		return err
+	}
+
+	return apply(cfg, client, fi)
+}
+
+func apply(cfg config, client *http.Client, rd io.Reader) (err error) {
+	buf := &bytes.Buffer{}
 
 	resource, err := encoding.
 		NewJSONDecoder[core.Resource](io.TeeReader(rd, buf)).

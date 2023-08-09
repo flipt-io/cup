@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -89,10 +90,39 @@ func main() {
 						return err
 					}
 
+					rd := os.Stdin
+					if source := ctx.String("f"); source != "-" {
+						rd, err = os.Open(source)
+						if err != nil {
+							return err
+						}
+					}
+
 					return apply(cfg,
 						http.DefaultClient,
-						ctx.String("f"),
+						rd,
 					)
+				},
+			},
+			{
+				Name:      "edit",
+				Category:  "resource",
+				Usage:     "Edit a resource",
+				ArgsUsage: "[type] [name]",
+				Action: func(ctx *cli.Context) error {
+					cfg, err := parseConfig(ctx)
+					if err != nil {
+						return err
+					}
+
+					if l := ctx.Args().Len(); l != 2 {
+						return fmt.Errorf("expected 2 arguments, found %d", l)
+					}
+
+					return edit(cfg,
+						http.DefaultClient,
+						ctx.Args().Get(0),
+						ctx.Args().Get(1))
 				},
 			},
 		},
