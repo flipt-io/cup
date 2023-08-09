@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/oklog/ulid/v2"
+	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/source/git"
 )
 
@@ -20,8 +21,8 @@ func New() *SCM {
 }
 
 // Propose stores the provided proposal in a map and returns a nil error and empty response.
-func (s *SCM) Propose(_ context.Context, p git.Proposal) (git.ProposalResponse, error) {
+func (s *SCM) Propose(_ context.Context, p git.Proposal) (*api.Result, error) {
 	s.proposals[p.ID] = p
 
-	return git.ProposalResponse{}, nil
+	return &api.Result{ID: p.ID}, nil
 }

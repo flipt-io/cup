@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-github/v53/github"
 	"github.com/oklog/ulid/v2"
+	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/source/git"
 )
 
@@ -51,16 +52,19 @@ func (s *SCM) Merge(ctx context.Context, id ulid.ULID) error {
 	return nil
 }
 
-func (s *SCM) Propose(ctx context.Context, p git.Proposal) (git.ProposalResponse, error) {
-	_, _, err := s.client.PullRequests.Create(ctx, s.owner, s.repository, &github.NewPullRequest{
+func (s *SCM) Propose(ctx context.Context, p git.Proposal) (*api.Proposal, error) {
+	pr, _, err := s.client.PullRequests.Create(ctx, s.owner, s.repository, &github.NewPullRequest{
 		Head:  github.String(p.Head),
 		Base:  github.String(p.Base),
 		Title: github.String(p.Title),
 		Body:  github.String(p.Body),
 	})
 	if err != nil {
-		return git.ProposalResponse{}, err
+		return nil, err
 	}
 
-	return git.ProposalResponse{}, nil
+	return &api.Proposal{
+		Source: "github",
+		URL:    pr.GetHTMLURL(),
+	}, nil
 }
