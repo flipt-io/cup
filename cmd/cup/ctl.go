@@ -13,6 +13,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/encoding"
 	"golang.org/x/exp/slog"
@@ -32,6 +33,20 @@ func definitions(cfg config, client *http.Client) error {
 		return err
 	}
 
+	enc, err := encoder(cfg, func(d *core.ResourceDefinition) (rows [][]string) {
+		for version := range d.Spec.Versions {
+			rows = append(rows, []string{d.Names.Plural, path.Join(d.Spec.Group, version), d.Names.Kind})
+		}
+		return
+	},
+		"NAMESPACE", "APIVERSION", "KIND",
+	)
+	if err != nil {
+		return err
+	}
+
+	defer enc.Flush()
+
 	var names []string
 	for name := range definitions {
 		names = append(names, name)
@@ -39,16 +54,13 @@ func definitions(cfg config, client *http.Client) error {
 
 	sort.Strings(names)
 
-	wr := writer()
-	fmt.Fprintln(wr, "NAME\tAPIVERSION\tKIND\t")
 	for _, name := range names {
-		def := definitions[name]
-		for version := range def.Spec.Versions {
-			fmt.Fprintf(wr, "%s\t%s/%s\t%s\t\n", def.Names.Plural, def.Spec.Group, version, def.Names.Kind)
+		if err := enc.Encode(definitions[name]); err != nil {
+			return err
 		}
 	}
 
-	return wr.Flush()
+	return nil
 }
 
 func get(cfg config, client *http.Client, typ string, args ...string) error {
@@ -74,26 +86,16 @@ func get(cfg config, client *http.Client, typ string, args ...string) error {
 		return fmt.Errorf("decoding resources: %w", err)
 	}
 
-	var out encoding.TypedEncoder[core.Resource]
-	switch cfg.Output {
-	case "table":
-		table := newTableEncoding(
-			func(r *core.Resource) []string {
-				return []string{r.Metadata.Namespace, r.Metadata.Name}
-			},
-			"NAMESPACE", "NAME",
-		)
-
-		out = table
-
-		defer table.Flush()
-	case "json":
-		enc := encoding.NewJSONEncoder[core.Resource](os.Stdout)
-		enc.SetIndent("", "  ")
-		out = enc
-	default:
-		return fmt.Errorf("unexpected output type: %q", cfg.Output)
+	enc, err := encoder(cfg, func(r *core.Resource) [][]string {
+		return [][]string{{r.Metadata.Namespace, r.Metadata.Name}}
+	},
+		"NAMESPACE", "NAME",
+	)
+	if err != nil {
+		return err
 	}
+
+	defer enc.Flush()
 
 	for _, resource := range resources {
 		// filter by name client side
@@ -110,7 +112,7 @@ func get(cfg config, client *http.Client, typ string, args ...string) error {
 			}
 		}
 
-		if err := out.Encode(resource); err != nil {
+		if err := enc.Encode(resource); err != nil {
 			return err
 		}
 	}
@@ -253,7 +255,7 @@ func apply(cfg config, client *http.Client, rd io.Reader) (err error) {
 		_ = resp.Body.Close()
 	}()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("reading unexpected response body: %w", err)
@@ -264,18 +266,63 @@ func apply(cfg config, client *http.Client, rd io.Reader) (err error) {
 		return fmt.Errorf("unexpected status: %q", resp.Status)
 	}
 
-	return nil
+	result, err := encoding.NewJSONDecoder[api.Result](resp.Body).Decode()
+	if err != nil {
+		return err
+	}
+
+	enc, err := encoder(cfg, func(r *api.Result) [][]string {
+		return [][]string{{r.ID.String(), r.Proposal.Source, r.Proposal.URL}}
+	}, "ID", "SOURCE", "URL")
+	if err != nil {
+		return err
+	}
+
+	defer enc.Flush()
+
+	return enc.Encode(result)
+}
+
+type flushEncoder[T any] interface {
+	encoding.TypedEncoder[T]
+	Flush() error
+}
+
+type noopFlushEncoder[T any] struct {
+	encoding.TypedEncoder[T]
+}
+
+func (n noopFlushEncoder[T]) Flush() error { return nil }
+
+func encoder[T any](cfg config, rowFn rowsFn[T], headers ...string) (flushEncoder[T], error) {
+	switch cfg.Output {
+	case "table":
+		table := newTableEncoding(
+			rowFn,
+			headers...,
+		)
+
+		return table, nil
+	case "json":
+		enc := encoding.NewJSONEncoder[T](os.Stdout)
+		enc.SetIndent("", "  ")
+		return noopFlushEncoder[T]{enc}, nil
+	default:
+		return nil, fmt.Errorf("unexpected output type: %q", cfg.Output)
+	}
 }
 
 type tableEncoding[T any] struct {
 	*tabwriter.Writer
 
 	headers       []string
-	rowFn         func(*T) []string
+	rowFn         rowsFn[T]
 	headerPrinted bool
 }
 
-func newTableEncoding[T any](rowFn func(*T) []string, headers ...string) *tableEncoding[T] {
+type rowsFn[T any] func(*T) [][]string
+
+func newTableEncoding[T any](rowFn rowsFn[T], headers ...string) *tableEncoding[T] {
 	return &tableEncoding[T]{Writer: writer(), rowFn: rowFn, headers: headers}
 }
 
@@ -285,9 +332,14 @@ func (e *tableEncoding[T]) Encode(t *T) error {
 		e.headerPrinted = true
 	}
 
-	_, err := fmt.Fprintln(e, strings.Join(e.rowFn(t), "\t")+"\t")
+	for _, row := range e.rowFn(t) {
+		_, err := fmt.Fprintln(e, strings.Join(row, "\t")+"\t")
+		if err != nil {
+			return err
+		}
+	}
 
-	return err
+	return nil
 }
 
 func getGVK(cfg config, client *http.Client, typ string) (group, version, kind string, err error) {

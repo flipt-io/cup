@@ -6,6 +6,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/oklog/ulid/v2"
+	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/source/git"
 )
 
@@ -58,16 +59,19 @@ func (s *SCM) Merge(_ context.Context, id ulid.ULID) error {
 	return nil
 }
 
-func (s *SCM) Propose(_ context.Context, p git.Proposal) (git.ProposalResponse, error) {
-	_, _, err := s.client.CreatePullRequest(s.owner, s.repository, gitea.CreatePullRequestOption{
+func (s *SCM) Propose(_ context.Context, p git.Proposal) (*api.Proposal, error) {
+	pr, _, err := s.client.CreatePullRequest(s.owner, s.repository, gitea.CreatePullRequestOption{
 		Head:  p.Head,
 		Base:  p.Base,
 		Title: p.Title,
 		Body:  p.Body,
 	})
 	if err != nil {
-		return git.ProposalResponse{}, err
+		return nil, err
 	}
 
-	return git.ProposalResponse{}, nil
+	return &api.Proposal{
+		Source: "gitea",
+		URL:    pr.HTMLURL,
+	}, nil
 }

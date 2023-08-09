@@ -29,7 +29,13 @@ type UpdateFunc func(controllers.FSConfig) error
 
 // Result is the result of performing an update on a target Source.
 type Result struct {
-	ID ulid.ULID
+	ID       ulid.ULID `json:"id"`
+	Proposal *Proposal `json:"proposal"`
+}
+
+type Proposal struct {
+	Source string `json:"source"`
+	URL    string `json:"url"`
 }
 
 // Source is the abstraction around a target source filesystem.
@@ -231,6 +237,8 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 			return
 		}
 
+		w.WriteHeader(http.StatusAccepted)
+
 		if err := json.NewEncoder(w).Encode(result); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -265,6 +273,8 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		w.WriteHeader(http.StatusAccepted)
 
 		if err := json.NewEncoder(w).Encode(result); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
