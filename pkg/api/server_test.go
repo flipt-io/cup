@@ -223,7 +223,7 @@ func Test_Server_Put(t *testing.T) {
 
 	defer resp.Body.Close()
 
-	if !assert.Equal(t, http.StatusOK, resp.StatusCode) {
+	if !assert.Equal(t, http.StatusAccepted, resp.StatusCode) {
 		data, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		t.Log(string(data))
@@ -281,7 +281,7 @@ func Test_Server_Delete(t *testing.T) {
 
 	defer resp.Body.Close()
 
-	if !assert.Equal(t, http.StatusOK, resp.StatusCode) {
+	if !assert.Equal(t, http.StatusAccepted, resp.StatusCode) {
 		data, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		t.Log(string(data))
