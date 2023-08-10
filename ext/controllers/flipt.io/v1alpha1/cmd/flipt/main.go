@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 
 	"go.flipt.io/cup/ext/controllers/flipt.io/v1alpha1/pkg/ext"
 
 	"github.com/gobwas/glob"
 	sdk "go.flipt.io/cup/sdk/controller/go"
-	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 )
 

@@ -8,7 +8,8 @@ import (
 )
 
 type Config struct {
-	API API
+	API       API
+	Tailscale Tailscale
 }
 
 func (c *Config) FlagSet() *flag.FlagSet {
@@ -20,7 +21,19 @@ func (c *Config) FlagSet() *flag.FlagSet {
 	set.StringVar(&c.API.Source.Git.SCM, "api-git-scm", "github", "SCM type (one of [github, gitea])")
 	set.StringVar(&c.API.Resources, "api-resources", ".", "path to server configuration directory (controllers, definitions and bindings)")
 
+	// Tailscale
+	set.StringVar(&c.Tailscale.Hostname, "tailscale-hostname", "", "hostname to expose on Tailscale")
+	set.StringVar(&c.Tailscale.AuthKey, "tailscale-auth-key", "", "Tailscale auth key (optional)")
+	set.BoolVar(&c.Tailscale.Ephemeral, "tailscale-ephemeral", false, "join the network as an ephemeral node (optional)")
+
 	return set
+}
+
+// Tailscale is configuration for [tsnet.Server].
+type Tailscale struct {
+	Hostname  string
+	AuthKey   string
+	Ephemeral bool
 }
 
 type API struct {

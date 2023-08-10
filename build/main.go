@@ -4,13 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"dagger.io/dagger"
 	"github.com/containerd/containerd/platforms"
 	"github.com/urfave/cli/v2"
 	"go.flipt.io/cup/build/hack"
-	"golang.org/x/exp/slog"
 )
 
 const (

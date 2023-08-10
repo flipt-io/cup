@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"log/slog"
 	"os"
 
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/peterbourgon/ff/v3/ffyaml"
 	"go.flipt.io/cup/pkg/config"
-	"golang.org/x/exp/slog"
 )
 
 func main() {

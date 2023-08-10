@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path"
 	"strings"
@@ -17,7 +18,6 @@ import (
 	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controllers/template"
 	"go.flipt.io/cup/pkg/controllers/wasm"
-	"golang.org/x/exp/slog"
 )
 
 func New(ctx context.Context, cfg *config.Config) (*api.Configuration, error) {

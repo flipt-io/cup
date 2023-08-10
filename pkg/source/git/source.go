@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controllers"
 	"go.flipt.io/cup/pkg/gitfs"
-	"golang.org/x/exp/slog"
 )
 
 var _ api.Source = (*Source)(nil)

@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
 
 	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
 )
 
 func main() {
