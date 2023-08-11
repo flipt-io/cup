@@ -2,6 +2,9 @@ package integration
 
 import (
 	"context"
+	"net/url"
+	"path"
+	"time"
 
 	"dagger.io/dagger"
 	"gopkg.in/yaml.v2"
@@ -13,16 +16,17 @@ const (
 	SCMEmail    = "dev@cup.flipt.io"
 )
 
-func SCM(ctx context.Context, client *dagger.Client, dir *dagger.Directory) (*dagger.Container, string, error) {
+func SCM(ctx context.Context, client *dagger.Client, cupd *dagger.Container, dir *dagger.Directory) (*dagger.Container, error) {
 	gitea := client.Container().
 		From("gitea/gitea:latest").
+		WithEnvVariable("BUST", time.Now().String()).
 		WithExposedPort(3000)
 
 	endp, err := gitea.Endpoint(ctx, dagger.ContainerEndpointOpts{
 		Scheme: "http",
 	})
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	gitea = gitea.WithExec(nil)
@@ -49,7 +53,7 @@ func SCM(ctx context.Context, client *dagger.Client, dir *dagger.Directory) (*da
 
 	contents, err := yaml.Marshal(&conf)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	_, err = client.Container().
@@ -63,10 +67,22 @@ func SCM(ctx context.Context, client *dagger.Client, dir *dagger.Directory) (*da
 		WithExec(nil).
 		Sync(ctx)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	return gitea, endp, nil
+	u, err := url.Parse(endp)
+	if err != nil {
+		return nil, err
+	}
+
+	u.Path = path.Join(SCMUser, "config.git")
+	u.User = url.UserPassword(SCMUser, SCMPassword)
+
+	return cupd.
+		WithServiceBinding("gitea", gitea).
+		WithEnvVariable("CUPD_API_SOURCE", "git").
+		WithEnvVariable("CUPD_API_GIT_SCM", "gitea").
+		WithEnvVariable("CUPD_API_GIT_REPO", u.String()), nil
 }
 
 type config struct {
