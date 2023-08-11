@@ -3,13 +3,13 @@
     "kind": "Resource",
     "metadata": {
         "namespace": "default",
-        "name": "bar",
+        "name": "foo",
         "labels": {
-            "baz": "bar"
+            "foo": "bar"
         },
         "annotations": {}
     },
     "spec": {
-        "bar": "foo"
+      "foo": "bar"
     }
 }

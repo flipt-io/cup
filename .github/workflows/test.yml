@@ -4,8 +4,11 @@ on:
 
 jobs:
   unit:
-    name: Unit Test
+    name: Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        command: ["unit", "integration"]
     steps:
       - uses: actions/setup-go@v3
         with:
@@ -20,4 +23,4 @@ jobs:
         run: curl -L https://dl.dagger.io/dagger/install.sh | sh
 
       - name: Run Dagger pipeline
-        run: ./build.sh test unit
+        run: ./build.sh test ${{ matrix.command }}

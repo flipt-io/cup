@@ -13,6 +13,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"go.flipt.io/cup/cmd/cup/config"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/encoding"
@@ -27,7 +28,7 @@ func init() {
 	}
 }
 
-func definitions(cfg config, client *http.Client) error {
+func definitions(cfg config.Config, client *http.Client) error {
 	definitions, err := getDefintions(cfg, client)
 	if err != nil {
 		return err
@@ -63,7 +64,7 @@ func definitions(cfg config, client *http.Client) error {
 	return nil
 }
 
-func get(cfg config, client *http.Client, typ string, args ...string) error {
+func get(cfg config.Config, client *http.Client, typ string, args ...string) error {
 	var name *string
 	if len(args) == 1 {
 		n := args[0]
@@ -120,7 +121,7 @@ func get(cfg config, client *http.Client, typ string, args ...string) error {
 	return nil
 }
 
-func getResourceBody(cfg config, client *http.Client, typ string, name *string) (io.ReadCloser, error) {
+func getResourceBody(cfg config.Config, client *http.Client, typ string, name *string) (io.ReadCloser, error) {
 	group, version, kind, err := getGVK(cfg, client, typ)
 	if err != nil {
 		return nil, fmt.Errorf("get: %w", err)
@@ -155,7 +156,7 @@ func getResourceBody(cfg config, client *http.Client, typ string, name *string) 
 	return resp.Body, nil
 }
 
-func edit(cfg config, client *http.Client, typ, name string) (err error) {
+func edit(cfg config.Config, client *http.Client, typ, name string) (err error) {
 	body, err := getResourceBody(cfg, client, typ, &name)
 	if err != nil {
 		return err
@@ -209,7 +210,7 @@ func edit(cfg config, client *http.Client, typ, name string) (err error) {
 	return apply(cfg, client, fi)
 }
 
-func apply(cfg config, client *http.Client, rd io.Reader) (err error) {
+func apply(cfg config.Config, client *http.Client, rd io.Reader) (err error) {
 	buf := &bytes.Buffer{}
 
 	resource, err := encoding.
@@ -294,7 +295,7 @@ type noopFlushEncoder[T any] struct {
 
 func (n noopFlushEncoder[T]) Flush() error { return nil }
 
-func encoder[T any](cfg config, rowFn rowsFn[T], headers ...string) (flushEncoder[T], error) {
+func encoder[T any](cfg config.Config, rowFn rowsFn[T], headers ...string) (flushEncoder[T], error) {
 	switch cfg.Output {
 	case "table":
 		table := newTableEncoding(
@@ -342,7 +343,7 @@ func (e *tableEncoding[T]) Encode(t *T) error {
 	return nil
 }
 
-func getGVK(cfg config, client *http.Client, typ string) (group, version, kind string, err error) {
+func getGVK(cfg config.Config, client *http.Client, typ string) (group, version, kind string, err error) {
 	parts := strings.SplitN(typ, "/", 3)
 	switch len(parts) {
 	case 3:
@@ -387,7 +388,7 @@ func getGVK(cfg config, client *http.Client, typ string) (group, version, kind s
 	return
 }
 
-func getDefintionsByAPIVersionKind(cfg config, client *http.Client) (map[string]*core.ResourceDefinition, error) {
+func getDefintionsByAPIVersionKind(cfg config.Config, client *http.Client) (map[string]*core.ResourceDefinition, error) {
 	m := map[string]*core.ResourceDefinition{}
 	defs, err := getDefintions(cfg, client)
 	if err != nil {
@@ -403,7 +404,7 @@ func getDefintionsByAPIVersionKind(cfg config, client *http.Client) (map[string]
 	return m, nil
 }
 
-func getDefintions(cfg config, client *http.Client) (map[string]*core.ResourceDefinition, error) {
+func getDefintions(cfg config.Config, client *http.Client) (map[string]*core.ResourceDefinition, error) {
 	req, err := http.NewRequest(http.MethodGet, cfg.Address()+"/apis", nil)
 	if err != nil {
 		return nil, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"sync"
@@ -196,13 +197,13 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 
 	// put kind
 	s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var resource core.Resource
-		if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		res, err := schema.Validate(gojsonschema.NewBytesLoader(resource.Spec))
+		res, err := schema.Validate(gojsonschema.NewBytesLoader(data))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -210,6 +211,12 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 
 		if !res.Valid() {
 			http.Error(w, fmt.Sprintf("%v", res.Errors()), http.StatusBadRequest)
+			return
+		}
+
+		var resource core.Resource
+		if err := json.Unmarshal(data, &resource); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
