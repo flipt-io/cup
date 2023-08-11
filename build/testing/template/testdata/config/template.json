@@ -1,0 +1,10 @@
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "Controller",
+  "metadata": {
+    "name": "template"
+  },
+  "spec": {
+    "type": "template"
+  }
+}

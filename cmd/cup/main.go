@@ -9,6 +9,7 @@ import (
 	"path"
 
 	"github.com/urfave/cli/v2"
+	"go.flipt.io/cup/cmd/cup/config"
 	"golang.org/x/exp/slog"
 )
 
@@ -33,6 +34,14 @@ func main() {
 				Aliases: []string{"o"},
 				Value:   "table",
 			},
+			&cli.StringFlag{
+				Name:    "address",
+				Aliases: []string{"a"},
+			},
+			&cli.StringFlag{
+				Name:    "namespace",
+				Aliases: []string{"n"},
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -49,7 +58,7 @@ func main() {
 				Category: "discovery",
 				Usage:    "List the available resource definitions",
 				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
+					cfg, err := config.Parse(ctx)
 					if err != nil {
 						return err
 					}
@@ -62,7 +71,7 @@ func main() {
 				Category: "resource",
 				Usage:    "Get one or more resources",
 				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
+					cfg, err := config.Parse(ctx)
 					if err != nil {
 						return err
 					}
@@ -86,7 +95,7 @@ func main() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
+					cfg, err := config.Parse(ctx)
 					if err != nil {
 						return err
 					}
@@ -111,7 +120,7 @@ func main() {
 				Usage:     "Edit a resource",
 				ArgsUsage: "[type] [name]",
 				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
+					cfg, err := config.Parse(ctx)
 					if err != nil {
 						return err
 					}
@@ -176,7 +185,7 @@ func ensureConfigDir() (string, error) {
 
 	defer fi.Close()
 
-	if err := json.NewEncoder(fi).Encode(defaultConfig()); err != nil {
+	if err := json.NewEncoder(fi).Encode(config.Default()); err != nil {
 		return "", err
 	}
 

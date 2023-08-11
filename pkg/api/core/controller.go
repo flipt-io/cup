@@ -41,8 +41,10 @@ func DecodeController(
 				Type: c.Spec.Type,
 			},
 		}
-		if err := json.Unmarshal([]byte(c.Spec.Spec), &cntrl.Spec.Spec); err != nil {
-			return err
+		if len(c.Spec.Spec) > 0 {
+			if err := json.Unmarshal([]byte(c.Spec.Spec), &cntrl.Spec.Spec); err != nil {
+				return fmt.Errorf("parsing template spec: %w", err)
+			}
 		}
 
 		return template(cntrl)
