@@ -324,7 +324,7 @@ type tableEncoding[T any] struct {
 type rowsFn[T any] func(*T) [][]string
 
 func newTableEncoding[T any](rowFn rowsFn[T], headers ...string) *tableEncoding[T] {
-	return &tableEncoding[T]{Writer: writer(), rowFn: rowFn, headers: headers}
+	return &tableEncoding[T]{Writer: tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0), rowFn: rowFn, headers: headers}
 }
 
 func (e *tableEncoding[T]) Encode(t *T) error {
@@ -430,8 +430,4 @@ func getDefintions(cfg config.Config, client *http.Client) (map[string]*core.Res
 	}
 
 	return definitions, nil
-}
-
-func writer() *tabwriter.Writer {
-	return tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 }
