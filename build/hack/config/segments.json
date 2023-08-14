@@ -15,9 +15,47 @@
       "v1alpha1": {
         "type": "object",
         "properties": {
-          "enabled": { "type": "boolean" }
+          "spec": {
+            "type": "object",
+            "properties": {
+              "enabled": {"type": "boolean"},
+              "match_type": { "enum": ["", "ANY_MATCH_TYPE", "ALL_MATCH_TYPE"]},
+              "description": {"type": "string"},
+              "constraints": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "enum": ["", "STRING_COMPARISON_TYPE","NUMBER_COMPARISON_TYPE","BOOLEAN_COMPARISON_TYPE","DATETIME_COMPARISON_TYPE"]
+                    },
+                    "property": {"type": "string"},
+                    "operator": {"enum": [
+                      "",
+                      "eq",
+                      "neq",
+                      "empty",
+                      "notempty",
+                      "prefix",
+                      "suffix",
+                      "present",
+                      "notpresent",
+                      "le",
+                      "lte",
+                      "gt",
+                      "gte",
+                      "true",
+                      "false"
+                    ]},
+                    "value": {"type": "string"},
+                    "description": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       }
     }
   }

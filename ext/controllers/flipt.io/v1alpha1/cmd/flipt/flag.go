@@ -165,7 +165,7 @@ func (f *Flag) MarshalJSON() (_ []byte, err error) {
 	flag.Key = ""  // key will be carried by the resource name
 	flag.Name = "" // key will be carried by the resource name
 
-	resource.Spec, err = json.Marshal(&f.flag)
+	resource.Spec, err = json.Marshal(&flag)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling flag: %w", err)
 	}
