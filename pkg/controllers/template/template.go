@@ -14,6 +14,7 @@ import (
 	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controllers"
 	"go.flipt.io/cup/pkg/encoding"
+	"golang.org/x/exp/slog"
 )
 
 const (
@@ -176,6 +177,8 @@ func (c *Controller) Delete(_ context.Context, req *controllers.DeleteRequest) (
 	if err := c.resourceTmpl.Execute(buf, req); err != nil {
 		return err
 	}
+
+	slog.Debug("Removing file", "path", buf.String())
 
 	return req.FSConfig.ToFS().Remove(buf.String())
 }
