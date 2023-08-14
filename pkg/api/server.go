@@ -31,6 +31,7 @@ type UpdateFunc func(controllers.FSConfig) error
 // Result is the result of performing an update on a target Source.
 type Result struct {
 	ID       ulid.ULID `json:"id"`
+	Empty    bool      `json:"empty"`
 	Proposal *Proposal `json:"proposal"`
 }
 
@@ -278,6 +279,13 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// result was empty and so no proposal or change
+		// was made
+		if result.Empty {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 

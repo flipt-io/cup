@@ -118,7 +118,7 @@ func main() {
 				Name:      "edit",
 				Category:  "resource",
 				Usage:     "Edit a resource",
-				ArgsUsage: "[type] [name]",
+				ArgsUsage: "<type> <name>",
 				Action: func(ctx *cli.Context) error {
 					cfg, err := config.Parse(ctx)
 					if err != nil {
@@ -130,6 +130,27 @@ func main() {
 					}
 
 					return edit(cfg,
+						http.DefaultClient,
+						ctx.Args().Get(0),
+						ctx.Args().Get(1))
+				},
+			},
+			{
+				Name:      "delete",
+				Category:  "resource",
+				Usage:     "Delete a resource",
+				ArgsUsage: "<type> <name>",
+				Action: func(ctx *cli.Context) error {
+					cfg, err := config.Parse(ctx)
+					if err != nil {
+						return err
+					}
+
+					if l := ctx.Args().Len(); l != 2 {
+						return fmt.Errorf("expected 2 arguments, found %d", l)
+					}
+
+					return del(cfg,
 						http.DefaultClient,
 						ctx.Args().Get(0),
 						ctx.Args().Get(1))

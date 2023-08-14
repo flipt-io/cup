@@ -194,6 +194,13 @@ func (s *Source) Update(ctx context.Context, rev, message string, fn api.UpdateF
 		Committer: &object.Signature{Email: "cup@flipt.io", Name: "cup"},
 	})
 	if err != nil {
+		// NOTE: currently with go-git we can see https://github.com/go-git/go-git/issues/723
+		// This occurs when the result of the removal leads to an empty repository.
+		// Just and FYI why a delete might fail silently when the result is the target repo is empty.
+		if errors.Is(err, git.ErrEmptyCommit) {
+			return &api.Result{Empty: true}, nil
+		}
+
 		return nil, fmt.Errorf("committing changes: %w", err)
 	}
 

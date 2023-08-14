@@ -12,28 +12,47 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/api/core"
+	"go.flipt.io/cup/pkg/encoding"
 )
 
-var resourceFoo = core.NamespacedObject[ResourceSpec]{
-	APIVersion: "test.cup.flipt.io/v1alpha1",
-	Kind:       "Resource",
-	Metadata: core.NamespacedMetadata{
-		Name:      "foo",
-		Namespace: "default",
-		Labels: map[string]string{
-			"foo": "bar",
+var (
+	resourceFoo = core.NamespacedObject[ResourceSpec]{
+		APIVersion: "test.cup.flipt.io/v1alpha1",
+		Kind:       "Resource",
+		Metadata: core.NamespacedMetadata{
+			Name:      "foo",
+			Namespace: "default",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+			Annotations: map[string]string{},
 		},
-		Annotations: map[string]string{},
-	},
-	Spec: ResourceSpec{
-		Foo: "bar",
-	},
-}
+		Spec: ResourceSpec{
+			Foo: "bar",
+		},
+	}
+
+	resourceBar = core.NamespacedObject[ResourceSpec]{
+		APIVersion: "test.cup.flipt.io/v1alpha1",
+		Kind:       "Resource",
+		Metadata: core.NamespacedMetadata{
+			Name:      "bar",
+			Namespace: "default",
+			Labels: map[string]string{
+				"bar": "baz",
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: ResourceSpec{
+			Foo: "baz",
+		},
+	}
+)
 
 var (
 	address   = flag.String("cup-address", "http://localhost:8181", "Address of cupd instance")
 	namespace = flag.String("cup-namespace", "default", "Namespace context for cup operations")
-	proposes  = flag.Bool("cup-proposes", false, "Declare whether or not the backend should make proposals")
+	proposes  = flag.Bool("cup-proposes", false, "Assert whether or not the backend should make proposals")
 )
 
 func Test_Cup_Controller_Template(t *testing.T) {
@@ -68,10 +87,14 @@ func Test_Cup_Controller_Template(t *testing.T) {
 		stdout, _, err := cup(t, nil, "-o", "json", "get", "resources")
 		require.NoError(t, err)
 
-		var resource core.NamespacedObject[ResourceSpec]
-		require.NoError(t, json.Unmarshal(stdout, &resource))
+		enc := encoding.NewJSONDecoder[core.NamespacedObject[ResourceSpec]](bytes.NewBuffer(stdout))
+		resources, err := encoding.DecodeAll[core.NamespacedObject[ResourceSpec]](enc)
+		require.NoError(t, err)
 
-		assert.Equal(t, resourceFoo, resource)
+		assert.Equal(t, []*core.NamespacedObject[ResourceSpec]{
+			&resourceBar,
+			&resourceFoo,
+		}, resources)
 	})
 
 	t.Run("cup get resources foo", func(t *testing.T) {
@@ -89,15 +112,15 @@ func Test_Cup_Controller_Template(t *testing.T) {
 			APIVersion: "test.cup.flipt.io/v1alpha1",
 			Kind:       "Resource",
 			Metadata: core.NamespacedMetadata{
-				Name:      "bar",
+				Name:      "baz",
 				Namespace: "default",
 				Labels: map[string]string{
-					"bar": "baz",
+					"baz": "foo",
 				},
 				Annotations: map[string]string{},
 			},
 			Spec: ResourceSpec{
-				Foo: "bar",
+				Foo: "baz",
 			},
 		}
 
@@ -109,6 +132,28 @@ func Test_Cup_Controller_Template(t *testing.T) {
 
 		var result api.Result
 		require.NoError(t, json.Unmarshal(stdout, &result))
+
+		if !*proposes {
+			assert.Zero(t, result.ID)
+			assert.Nil(t, result.Proposal)
+			return
+		}
+
+		assert.NotZero(t, result.ID)
+		require.NotNil(t, result.Proposal)
+		assert.Equal(t, "gitea", result.Proposal.Source)
+		assert.NotZero(t, result.Proposal.URL)
+	})
+
+	t.Run("cup delete", func(t *testing.T) {
+		stdout, _, err := cup(t, nil, "-o", "json", "delete", "resources", "foo")
+		require.NoError(t, err)
+
+		var result api.Result
+		if !assert.NoError(t, json.Unmarshal(stdout, &result)) {
+			t.Log("unexpected error parsing: ", string(stdout))
+			return
+		}
 
 		if !*proposes {
 			assert.Zero(t, result.ID)
