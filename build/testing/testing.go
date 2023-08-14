@@ -15,12 +15,19 @@ func Integration(ctx context.Context, client *dagger.Client, base, cupd *dagger.
 	{
 		pipeline := base.Pipeline("local template")
 
-		cupd := cupd.
-			WithEnvVariable("BUST", time.Now().String()).
+		cupd, err := cupdService(ctx, client, pipeline, cupd.
 			WithMountedDirectory("/work", pipeline.Directory("testdata/base")).
-			WithWorkdir("/work")
+			WithWorkdir("/work"))
+		if err != nil {
+			return err
+		}
 
-		if err := template(ctx, client, pipeline, cupd); err != nil {
+		_, err = base.
+			WithServiceBinding("cupd", cupd).
+			WithExec([]string{"go", "test", "-cup-address", "http://cupd:8181", "."}).
+			Sync(ctx)
+
+		if err != nil {
 			return err
 		}
 	}
@@ -38,7 +45,15 @@ func Integration(ctx context.Context, client *dagger.Client, base, cupd *dagger.
 			return err
 		}
 
-		if err := template(ctx, client, pipeline, cupd); err != nil {
+		if cupd, err = cupdService(ctx, client, pipeline, cupd); err != nil {
+			return err
+		}
+
+		_, err = base.
+			WithServiceBinding("cupd", cupd).
+			WithExec([]string{"go", "test", "-cup-address", "http://cupd:8181", "-cup-proposes", "."}).
+			Sync(ctx)
+		if err != nil {
 			return err
 		}
 	}
@@ -46,26 +61,21 @@ func Integration(ctx context.Context, client *dagger.Client, base, cupd *dagger.
 	return nil
 }
 
-func template(ctx context.Context, client *dagger.Client, base, cupd *dagger.Container) (err error) {
+func cupdService(ctx context.Context, client *dagger.Client, base, cupd *dagger.Container) (_ *dagger.Container, err error) {
 	cupd, err = cupd.
 		WithEnvVariable("BUST", time.Now().String()).
 		WithExposedPort(8181).
 		Sync(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = cupd.Endpoint(ctx, dagger.ContainerEndpointOpts{
 		Scheme: "http",
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = base.
-		WithServiceBinding("cupd", cupd.WithExec(nil)).
-		WithExec([]string{"go", "test", "-cup-address", "http://cupd:8181", "."}).
-		Sync(ctx)
-
-	return err
+	return cupd.WithExec(nil), nil
 }
