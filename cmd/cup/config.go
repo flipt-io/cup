@@ -18,22 +18,35 @@ func configCommand() *cli.Command {
 				return err
 			}
 
-			wr := writer()
-			fmt.Fprintln(wr, "NAME\tADDRESS\tNAMESPACE\tCURRENT\t")
-			for name, ctx := range cfg.Contexts {
+			type namedContext struct {
+				*config.Context
+				Name string `json:"name"`
+			}
+
+			enc, err := encoder(cfg, func(c *namedContext) [][]string {
 				var current string
-				if name == cfg.CurrentContext {
+				if c.Name == cfg.CurrentContext {
 					current = "*"
 				}
 
 				namespace := "default"
-				if ctx.Namespace != "" {
-					namespace = ctx.Namespace
+				if c.Namespace != "" {
+					namespace = c.Namespace
 				}
 
-				fmt.Fprintf(wr, "%s\t%s\t%s\t%s\t\n", name, ctx.Address, namespace, current)
+				return [][]string{{c.Name, c.Address, namespace, current}}
+			}, "NAME", "ADDRESS", "NAMESPACE", "CURRENT")
+			if err != nil {
+				return err
 			}
-			return wr.Flush()
+
+			for name, ctx := range cfg.Contexts {
+				if err := enc.Encode(&namedContext{Name: name, Context: ctx}); err != nil {
+					return err
+				}
+			}
+
+			return enc.Flush()
 		},
 		Subcommands: []*cli.Command{
 			{
