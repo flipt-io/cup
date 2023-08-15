@@ -185,13 +185,36 @@ func (s *Source) Update(ctx context.Context, rev, message string, fn api.UpdateF
 		return nil, fmt.Errorf("execute proposal: %w", err)
 	}
 
+	// TODO(georgemac): report upstream to go-git
+	// For some reason, even with AllowingEmptyCommits == false this
+	// still produces empty commits and pushes them.
+	// It could be to do with how the index is nuked before hand
+	// to support concurrent requests (needs investigation).
+	// For now lets just return empty when the status has nothing in it.
+	status, err := work.Status()
+	if err != nil {
+		return nil, fmt.Errorf("getting status: %w", err)
+	}
+
+	if len(status) == 0 {
+		return &api.Result{Empty: true}, nil
+	}
+
 	if err := work.AddWithOptions(&git.AddOptions{All: true}); err != nil {
 		return nil, fmt.Errorf("adding changes: %w", err)
 	}
 
+	var (
+		now       = time.Now().UTC()
+		signature = &object.Signature{
+			Email: "cup@flipt.io",
+			Name:  "cup",
+			When:  now,
+		}
+	)
 	_, err = work.Commit(message, &git.CommitOptions{
-		Author:    &object.Signature{Email: "cup@flipt.io", Name: "cup"},
-		Committer: &object.Signature{Email: "cup@flipt.io", Name: "cup"},
+		Author:    signature,
+		Committer: signature,
 	})
 	if err != nil {
 		// NOTE: currently with go-git we can see https://github.com/go-git/go-git/issues/723

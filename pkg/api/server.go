@@ -251,6 +251,12 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 			return
 		}
 
+		// result was empty and so no proposal or change was made
+		if result.Empty {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		w.WriteHeader(http.StatusAccepted)
 
 		if err := json.NewEncoder(w).Encode(result); err != nil {
@@ -288,8 +294,7 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 			return
 		}
 
-		// result was empty and so no proposal or change
-		// was made
+		// result was empty and so no proposal or change was made
 		if result.Empty {
 			w.WriteHeader(http.StatusNoContent)
 			return
