@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,7 +21,6 @@ import (
 	"go.flipt.io/cup/pkg/controllers/template"
 	"go.flipt.io/cup/pkg/encoding"
 	"go.flipt.io/cup/pkg/source/mem"
-	"golang.org/x/exp/slog"
 )
 
 var (

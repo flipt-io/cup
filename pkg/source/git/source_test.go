@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/url"
 	"os"
 	"strings"
@@ -20,7 +21,6 @@ import (
 	"go.flipt.io/cup/pkg/controllers"
 	"go.flipt.io/cup/pkg/source/git"
 	giteascm "go.flipt.io/cup/pkg/source/git/scm/gitea"
-	"golang.org/x/exp/slog"
 )
 
 var gitRepoURL = os.Getenv("TEST_GIT_REPO_URL")

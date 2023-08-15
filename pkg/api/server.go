@@ -6,18 +6,19 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"sync"
 
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/oklog/ulid/v2"
 	"github.com/xeipuuv/gojsonschema"
 	"go.flipt.io/cup/pkg/api/core"
+	"go.flipt.io/cup/pkg/api/logger"
+	"go.flipt.io/cup/pkg/api/tailscale"
 	"go.flipt.io/cup/pkg/containers"
 	"go.flipt.io/cup/pkg/controllers"
-	"golang.org/x/exp/slog"
 )
 
 // ViewFunc is a function provided to Source.View.
@@ -63,9 +64,10 @@ type Controller interface {
 }
 
 type Configuration struct {
-	Definitions containers.MapStore[string, *core.ResourceDefinition]
-	Controllers containers.MapStore[string, Controller]
-	Bindings    containers.MapStore[string, *core.Binding]
+	Definitions     containers.MapStore[string, *core.ResourceDefinition]
+	Controllers     containers.MapStore[string, Controller]
+	Bindings        containers.MapStore[string, *core.Binding]
+	TailscaleClient tailscale.Client
 }
 
 // Server is the core api.Server for cupd.
@@ -89,8 +91,12 @@ func NewServer(fs Source, cfg *Configuration) (*Server, error) {
 		rev: "main",
 	}
 
-	s.mux.Use(middleware.Logger)
+	s.mux.Use(logger.New(slog.Default().Handler()))
 	s.mux.Use(cors.AllowAll().Handler)
+	if cfg.TailscaleClient != nil {
+		s.mux.Use(tailscale.AddWhoIs(cfg.TailscaleClient))
+	}
+
 	s.mux.Get("/apis", s.handleSourceDefinitions)
 
 	for _, binding := range cfg.Bindings {

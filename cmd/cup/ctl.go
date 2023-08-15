@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,7 +18,6 @@ import (
 	"go.flipt.io/cup/pkg/api"
 	"go.flipt.io/cup/pkg/api/core"
 	"go.flipt.io/cup/pkg/encoding"
-	"golang.org/x/exp/slog"
 )
 
 var editor = "vim"

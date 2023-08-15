@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
 
 	"github.com/urfave/cli/v2"
 	"go.flipt.io/cup/cmd/cup/config"
-	"golang.org/x/exp/slog"
 )
 
 func main() {
