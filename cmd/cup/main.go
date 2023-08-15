@@ -42,6 +42,11 @@ func main() {
 				Name:    "namespace",
 				Aliases: []string{"n"},
 			},
+			&cli.StringFlag{
+				Name:    "level",
+				Aliases: []string{"l"},
+				Usage:   "set the logging level (default: \"info\")",
+			},
 		},
 		Commands: []*cli.Command{
 			{

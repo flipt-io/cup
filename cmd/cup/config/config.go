@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -68,6 +69,24 @@ func Parse(ctx *cli.Context) (Config, error) {
 		current.Namespace = ctx.String("namespace")
 	}
 
+	var level slog.Level
+	if l := ctx.String("level"); l != "" {
+		if err := level.UnmarshalText([]byte(l)); err != nil {
+			return conf, err
+		}
+	}
+
+	switch conf.Output {
+	case "json":
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+		})))
+	default:
+		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+		})))
+	}
+
 	return conf, nil
 }
 
@@ -81,6 +100,7 @@ func Set(ctx *cli.Context, key, value string) error {
 
 	var conf Config
 	if err := json.NewDecoder(fi).Decode(&conf); err != nil {
+
 		return fmt.Errorf("parsing config: %w", err)
 	}
 
