@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -30,7 +31,14 @@ type UpdateFunc func(controllers.FSConfig) error
 
 // Result is the result of performing an update on a target Source.
 type Result struct {
-	ID ulid.ULID
+	ID       ulid.ULID `json:"id"`
+	Empty    bool      `json:"empty"`
+	Proposal *Proposal `json:"proposal"`
+}
+
+type Proposal struct {
+	Source string `json:"source"`
+	URL    string `json:"url"`
 }
 
 // Source is the abstraction around a target source filesystem.
@@ -196,13 +204,13 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 
 	// put kind
 	s.mux.Put(named, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var resource core.Resource
-		if err := json.NewDecoder(r.Body).Decode(&resource); err != nil {
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		res, err := schema.Validate(gojsonschema.NewBytesLoader(resource.Spec))
+		res, err := schema.Validate(gojsonschema.NewBytesLoader(data))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -210,6 +218,12 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 
 		if !res.Valid() {
 			http.Error(w, fmt.Sprintf("%v", res.Errors()), http.StatusBadRequest)
+			return
+		}
+
+		var resource core.Resource
+		if err := json.Unmarshal(data, &resource); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -236,6 +250,8 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		w.WriteHeader(http.StatusAccepted)
 
 		if err := json.NewEncoder(w).Encode(result); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -271,6 +287,15 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		// result was empty and so no proposal or change
+		// was made
+		if result.Empty {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
 
 		if err := json.NewEncoder(w).Encode(result); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

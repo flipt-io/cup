@@ -16,6 +16,7 @@ require (
 	github.com/tetratelabs/wazero v1.3.1
 	github.com/urfave/cli/v2 v2.25.7
 	github.com/xeipuuv/gojsonschema v1.2.0
+	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090
 	tailscale.com v1.1.1-0.20230810031934-6ee85ba41222
 )
 
@@ -97,7 +98,6 @@ require (
 	go4.org/mem v0.0.0-20220726221520-4f986261bf13 // indirect
 	go4.org/netipx v0.0.0-20230728180743-ad4cb58a6516 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
-	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect

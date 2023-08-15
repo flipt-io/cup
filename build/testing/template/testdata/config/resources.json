@@ -1,0 +1,30 @@
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "ResourceDefinition",
+  "metadata": {
+    "name": "resources.test.cup.flipt.io"
+  },
+  "names": {
+    "kind": "Resource",
+    "singular": "resource",
+    "plural": "resources"
+  },
+  "spec": {
+    "group": "test.cup.flipt.io",
+    "versions": {
+      "v1alpha1": {
+        "type": "object",
+        "properties": {
+          "spec": {
+            "type": "object",
+            "properties": {
+              "foo": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

@@ -11,6 +11,8 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/urfave/cli/v2"
 	"go.flipt.io/cup/build/hack"
+	"go.flipt.io/cup/build/testing"
+	"golang.org/x/exp/slog"
 )
 
 const (
@@ -34,7 +36,15 @@ func main() {
 					{
 						Name: "unit",
 						Action: func(ctx *cli.Context) error {
-							return test(ctx.Context)
+							return testUnit(ctx.Context)
+						},
+					},
+					{
+						Name: "integration",
+						Action: func(ctx *cli.Context) error {
+							return withCup(ctx.Context, func(client *dagger.Client, base, cup *dagger.Container, platform dagger.Platform) error {
+								return testing.Integration(ctx.Context, client, base, cup)
+							})
 						},
 					},
 				},
@@ -143,7 +153,7 @@ func main() {
 	}
 }
 
-func test(ctx context.Context) error {
+func testUnit(ctx context.Context) error {
 	return withBase(ctx, func(client *dagger.Client, base *dagger.Container, platform dagger.Platform) error {
 		_, err := base.
 			WithEnvVariable("CGO_ENABLED", "1").
@@ -160,6 +170,27 @@ func build(ctx context.Context) error {
 			Sync(ctx)
 		return err
 	})
+}
+
+func withCup(ctx context.Context, fn func(client *dagger.Client, base, cup *dagger.Container, platform dagger.Platform) error, opts ...option) error {
+	return withBase(ctx, func(client *dagger.Client, base *dagger.Container, platform dagger.Platform) error {
+		cup, err := client.
+			Container(dagger.ContainerOpts{Platform: platform}).
+			From("alpine:3.18").
+			WithExec([]string{"mkdir", "-p", "/var/run/cupd"}).
+			WithWorkdir("/var/run/cupd").
+			WithFile("/usr/local/bin/cupd", base.File("/usr/local/bin/cupd")).
+			WithFile("/usr/local/bin/cup", base.File("/usr/local/bin/cup")).
+			WithDefaultArgs(dagger.ContainerWithDefaultArgsOpts{
+				Args: []string{"/usr/local/bin/cupd", "serve", "-api-resources", "/etc/cupd/config"},
+			}).
+			Sync(ctx)
+		if err != nil {
+			return err
+		}
+
+		return fn(client, base, cup, platform)
+	}, opts...)
 }
 
 func withBase(ctx context.Context, fn func(client *dagger.Client, base *dagger.Container, platform dagger.Platform) error, opts ...option) error {
@@ -190,8 +221,8 @@ func withBase(ctx context.Context, fn func(client *dagger.Client, base *dagger.C
 		return fn(client, base.
 			WithMountedCache(goBuildCachePath, cacheGoBuild).
 			WithMountedCache(goModCachePath, cacheGoMod).
-			WithExec([]string{"go", "build", "-o", "/usr/local/bin/cupd", "./cmd/cupd/..."}).
-			WithExec([]string{"go", "build", "-o", "/usr/local/bin/cup", "./cmd/cup/..."}),
+			WithExec([]string{"sh", "-c", "go build -o /usr/local/bin/cupd ./cmd/cupd/*.go"}).
+			WithExec([]string{"sh", "-c", "go build -o /usr/local/bin/cup ./cmd/cup/*.go"}),
 			platform,
 		)
 	}, opts...)

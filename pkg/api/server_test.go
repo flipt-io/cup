@@ -38,7 +38,7 @@ var (
 		Spec: core.ResourceDefinitionSpec{
 			Group: "test.cup.flipt.io",
 			Versions: map[string]json.RawMessage{
-				"v1alpha1": []byte(`{"type":"object"}`),
+				"v1alpha1": []byte(`{"type":"object","properties":{"spec":{"type":"object"}}}`),
 			},
 		},
 	}
@@ -180,7 +180,7 @@ func Test_Server_List(t *testing.T) {
 				},
 				Annotations: map[string]string{},
 			},
-			Spec: []byte(`{}`),
+			Spec: []byte(`{"bar":"foo"}`),
 		},
 		{
 			APIVersion: "test.cup.flipt.io/v1alpha1",
@@ -223,7 +223,7 @@ func Test_Server_Put(t *testing.T) {
 
 	defer resp.Body.Close()
 
-	if !assert.Equal(t, http.StatusOK, resp.StatusCode) {
+	if !assert.Equal(t, http.StatusAccepted, resp.StatusCode) {
 		data, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		t.Log(string(data))
@@ -281,7 +281,7 @@ func Test_Server_Delete(t *testing.T) {
 
 	defer resp.Body.Close()
 
-	if !assert.Equal(t, http.StatusOK, resp.StatusCode) {
+	if !assert.Equal(t, http.StatusAccepted, resp.StatusCode) {
 		data, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		t.Log(string(data))

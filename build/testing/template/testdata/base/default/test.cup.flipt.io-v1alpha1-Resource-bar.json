@@ -5,11 +5,11 @@
         "namespace": "default",
         "name": "bar",
         "labels": {
-            "baz": "bar"
+            "bar": "baz"
         },
         "annotations": {}
     },
     "spec": {
-        "bar": "foo"
+      "foo": "baz"
     }
 }

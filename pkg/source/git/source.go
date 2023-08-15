@@ -36,13 +36,9 @@ type Proposal struct {
 	Body  string
 }
 
-// ProposalResponse is a structure which will contain any details identifying
-// the successful proposition.
-type ProposalResponse struct{}
-
 // SCM is an abstraction around repositories and source control providers.
 type SCM interface {
-	Propose(context.Context, Proposal) (ProposalResponse, error)
+	Propose(context.Context, Proposal) (*api.Proposal, error)
 }
 
 // Source is an implementation of api.Source
@@ -198,6 +194,13 @@ func (s *Source) Update(ctx context.Context, rev, message string, fn api.UpdateF
 		Committer: &object.Signature{Email: "cup@flipt.io", Name: "cup"},
 	})
 	if err != nil {
+		// NOTE: currently with go-git we can see https://github.com/go-git/go-git/issues/723
+		// This occurs when the result of the removal leads to an empty repository.
+		// Just and FYI why a delete might fail silently when the result is the target repo is empty.
+		if errors.Is(err, git.ErrEmptyCommit) {
+			return &api.Result{Empty: true}, nil
+		}
+
 		return nil, fmt.Errorf("committing changes: %w", err)
 	}
 
@@ -221,13 +224,15 @@ func (s *Source) Update(ctx context.Context, rev, message string, fn api.UpdateF
 		return nil, fmt.Errorf("pushing changes: %w", err)
 	}
 
-	if _, err := s.scm.Propose(ctx, Proposal{
+	result.Proposal, err = s.scm.Propose(ctx, Proposal{
 		Head:  branch,
 		Base:  rev,
 		Title: message,
 		Body:  message,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("proposing change: %w", err)
+
 	}
 
 	return result, nil

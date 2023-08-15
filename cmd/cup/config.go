@@ -1,13 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	"go.flipt.io/cup/cmd/cup/config"
 )
 
 func configCommand() *cli.Command {
@@ -15,27 +13,40 @@ func configCommand() *cli.Command {
 		Name:    "context",
 		Aliases: []string{"ctx"},
 		Action: func(ctx *cli.Context) error {
-			cfg, err := parseConfig(ctx)
+			cfg, err := config.Parse(ctx)
 			if err != nil {
 				return err
 			}
 
-			wr := writer()
-			fmt.Fprintln(wr, "NAME\tADDRESS\tNAMESPACE\tCURRENT\t")
-			for name, ctx := range cfg.Contexts {
+			type namedContext struct {
+				*config.Context
+				Name string `json:"name"`
+			}
+
+			enc, err := encoder(cfg, func(c *namedContext) [][]string {
 				var current string
-				if name == cfg.CurrentContext {
+				if c.Name == cfg.CurrentContext {
 					current = "*"
 				}
 
 				namespace := "default"
-				if ctx.Namespace != "" {
-					namespace = ctx.Namespace
+				if c.Namespace != "" {
+					namespace = c.Namespace
 				}
 
-				fmt.Fprintf(wr, "%s\t%s\t%s\t%s\t\n", name, ctx.Address, namespace, current)
+				return [][]string{{c.Name, c.Address, namespace, current}}
+			}, "NAME", "ADDRESS", "NAMESPACE", "CURRENT")
+			if err != nil {
+				return err
 			}
-			return wr.Flush()
+
+			for name, ctx := range cfg.Contexts {
+				if err := enc.Encode(&namedContext{Name: name, Context: ctx}); err != nil {
+					return err
+				}
+			}
+
+			return enc.Flush()
 		},
 		Subcommands: []*cli.Command{
 			{
@@ -49,96 +60,9 @@ func configCommand() *cli.Command {
 						)
 					}
 
-					return configSet(ctx, key, value)
+					return config.Set(ctx, key, value)
 				},
 			},
 		},
 	}
-}
-
-type config struct {
-	CurrentContext string              `json:"current_context"`
-	Output         string              `json:"-"`
-	Contexts       map[string]*context `json:"contexts"`
-}
-
-func defaultConfig() config {
-	return config{
-		CurrentContext: "default",
-		Contexts: map[string]*context{
-			"default": {
-				Address:   "http://localhost:8181",
-				Namespace: "default",
-			},
-		},
-	}
-}
-
-func (c config) Address() string {
-	return c.Contexts[c.CurrentContext].Address
-}
-
-func (c config) Namespace() string {
-	current := c.Contexts[c.CurrentContext]
-	if current.Namespace != "" {
-		return current.Namespace
-	}
-
-	return "default"
-}
-
-type context struct {
-	Address   string `json:"address"`
-	Namespace string `json:"namespace"`
-}
-
-func parseConfig(ctx *cli.Context) (config, error) {
-	fi, err := os.Open(ctx.String("config"))
-	if err != nil {
-		return config{}, err
-	}
-
-	defer fi.Close()
-
-	var conf config
-	if err := json.NewDecoder(fi).Decode(&conf); err != nil {
-		return config{}, err
-	}
-
-	conf.Output = ctx.String("output")
-
-	return conf, nil
-}
-
-func configSet(ctx *cli.Context, key, value string) error {
-	fi, err := os.OpenFile(ctx.String("config"), os.O_RDWR, 0644)
-	if err != nil {
-		return fmt.Errorf("opening config: %w", err)
-	}
-
-	defer fi.Close()
-
-	var conf config
-	if err := json.NewDecoder(fi).Decode(&conf); err != nil {
-		return fmt.Errorf("parsing config: %w", err)
-	}
-
-	switch key {
-	case "address":
-		conf.Contexts[conf.CurrentContext].Address = value
-	case "namespace":
-		conf.Contexts[conf.CurrentContext].Namespace = value
-	default:
-		return fmt.Errorf("unknown config key: %q (should be one of [address, namespace])", key)
-	}
-
-	if err := fi.Truncate(0); err != nil {
-		return fmt.Errorf("truncating config: %w", err)
-	}
-
-	if _, err := fi.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("seeking config: %w", err)
-	}
-
-	return json.NewEncoder(fi).Encode(&conf)
 }

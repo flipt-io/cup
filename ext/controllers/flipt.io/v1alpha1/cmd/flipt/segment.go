@@ -165,7 +165,7 @@ func (s *Segment) MarshalJSON() (_ []byte, err error) {
 	segment.Key = ""  // key will be carried by the resource name
 	segment.Name = "" // key will be carried by the resource name
 
-	resource.Spec, err = json.Marshal(&s.segment)
+	resource.Spec, err = json.Marshal(&segment)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling segment: %w", err)
 	}

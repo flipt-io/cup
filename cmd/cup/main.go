@@ -10,6 +10,7 @@ import (
 	"path"
 
 	"github.com/urfave/cli/v2"
+	"go.flipt.io/cup/cmd/cup/config"
 )
 
 func main() {
@@ -33,6 +34,14 @@ func main() {
 				Aliases: []string{"o"},
 				Value:   "table",
 			},
+			&cli.StringFlag{
+				Name:    "address",
+				Aliases: []string{"a"},
+			},
+			&cli.StringFlag{
+				Name:    "namespace",
+				Aliases: []string{"n"},
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -49,7 +58,7 @@ func main() {
 				Category: "discovery",
 				Usage:    "List the available resource definitions",
 				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
+					cfg, err := config.Parse(ctx)
 					if err != nil {
 						return err
 					}
@@ -62,7 +71,7 @@ func main() {
 				Category: "resource",
 				Usage:    "Get one or more resources",
 				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
+					cfg, err := config.Parse(ctx)
 					if err != nil {
 						return err
 					}
@@ -86,7 +95,7 @@ func main() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
+					cfg, err := config.Parse(ctx)
 					if err != nil {
 						return err
 					}
@@ -109,9 +118,9 @@ func main() {
 				Name:      "edit",
 				Category:  "resource",
 				Usage:     "Edit a resource",
-				ArgsUsage: "[type] [name]",
+				ArgsUsage: "<type> <name>",
 				Action: func(ctx *cli.Context) error {
-					cfg, err := parseConfig(ctx)
+					cfg, err := config.Parse(ctx)
 					if err != nil {
 						return err
 					}
@@ -121,6 +130,27 @@ func main() {
 					}
 
 					return edit(cfg,
+						http.DefaultClient,
+						ctx.Args().Get(0),
+						ctx.Args().Get(1))
+				},
+			},
+			{
+				Name:      "delete",
+				Category:  "resource",
+				Usage:     "Delete a resource",
+				ArgsUsage: "<type> <name>",
+				Action: func(ctx *cli.Context) error {
+					cfg, err := config.Parse(ctx)
+					if err != nil {
+						return err
+					}
+
+					if l := ctx.Args().Len(); l != 2 {
+						return fmt.Errorf("expected 2 arguments, found %d", l)
+					}
+
+					return del(cfg,
 						http.DefaultClient,
 						ctx.Args().Get(0),
 						ctx.Args().Get(1))
@@ -176,7 +206,7 @@ func ensureConfigDir() (string, error) {
 
 	defer fi.Close()
 
-	if err := json.NewEncoder(fi).Encode(defaultConfig()); err != nil {
+	if err := json.NewEncoder(fi).Encode(config.Default()); err != nil {
 		return "", err
 	}
 

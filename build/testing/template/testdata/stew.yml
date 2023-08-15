@@ -1,0 +1,10 @@
+url: "http://localhost:3000"
+admin:
+  username: cup
+  password: password
+  email: dev@cup.flipt.io
+repositories:
+- name: config
+  contents:
+  - path: base
+    message: "feat: commit one"

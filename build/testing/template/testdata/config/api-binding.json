@@ -1,0 +1,13 @@
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "Binding",
+  "metadata": {
+    "name": "template"
+  },
+  "spec": {
+    "controller": "template",
+    "resources": [
+      "test.cup.flipt.io/v1alpha1/resources"
+    ]
+  }
+}

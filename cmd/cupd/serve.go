@@ -73,8 +73,12 @@ func serve(ctx context.Context, cfg *config.Config) error {
 		if err != nil {
 			return err
 		}
+
+		slog.Debug("Configured Git Source", "url", gitURL, "scm", src.Git.SCM)
 	case "local":
 		fs = local.New(src.Local.Path)
+
+		slog.Debug("Configured Local Source", "path", src.Local.Path)
 	}
 
 	apiConfig, err := apiconfig.New(ctx, cfg)
