@@ -1,0 +1,56 @@
+API Bindings
+------------
+
+Bindings are the last crucial compontent for exposing resources via the Cup API.
+A binding defines which resource types should be exposed via the API, and what controller should handle their operations.
+
+```json
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "Binding",
+  "metadata": {
+    "name": "flipt"
+  },
+  "spec": {
+    "controller": "flipt",
+    "resources": [
+      "flipt.io/v1alpha1/flags",
+      "flipt.io/v1alpha1/segments"
+    ]
+  }
+}
+```
+
+## Specification
+
+### Binding
+
+Each controller resource definition has the following top-level fields.
+Both `apiVersion` and `kind` are fixed constants, but `metadata` and `spec` can be configured accordingly.
+
+| Key        | Value                                                 |
+|------------|-------------------------------------------------------|
+| apiVersion | `"cup.flipt.io/v1alpha1"`                             |
+| kind       | `"Binding"`                                           |
+| metadata   | [`<Metadata>`](#metadata)                             |
+| spec       | [`<BindingSpec>`](#bindingsourcedefinitionspec) |
+
+### Metadata
+
+API bindings have a single metadata string field `name`.
+Each configured binding should be uniquely named.
+
+| Key  | Value    | Description                           |
+|------|----------|---------------------------------------|
+| name | `string` | Unique identifier for the API binding |
+
+### BindingSpec
+
+The API binding spec binds a [Controller](/configuration/controllers) to handle a set of [Resource Definitions](/configuration/definitions).
+A single definitions registers all the declared resources on the `cupd` API (under `/apis`).
+Each resource will be handled by the named controller.
+
+| Key        | Value      | Description                                                                 |
+|------------|------------|-----------------------------------------------------------------------------|
+| controller | `string`   | Should match the `<metadata.name>` of a loaded controller                   |
+| versions   | `[string]` | A list of resource identifies in the form `<group>/<version>/<plural>` (see [definition names](/configuration/definitions#names) to learn about `plural`) |
