@@ -11,3 +11,45 @@ Cup is an extensible server for building automation around contributions to Git 
 It exposes a consistent declarative API, with an opinionated convention based on Kubernetes.
 The API is self-describing, allowing for tooling to be developed with broad applicability to a range of usecases.
 All changes made to API resources are handled by Controllers. Controllers do the heavy lifting when it comes to changing the contents of a repository based on the desired state of an API resource. Any calculated changes are proposed as pull or merge requests on your prefered SCM (GitHub, Gitea etc.).
+
+```
+┌─────┐            ┌──────────────────────────────┐         ┌──────────────────────────────────┐
+│     │            │ Controller                   │         │ GitHub                           │
+│     │            │                              │         │                                  │
+│     │            │  flipt.io/Flag/v1            │         │  ┌─────────────────────┐         │
+│     ├────────────▶                              │         │  │ Git Repository      │         │
+│     │            │ ┌──────────────────────────┐ │         │  │                     │         │
+│     │            │ │ Wazero                   │ │  ┌──────┼─▶│                     │         │
+│     │            │ │                          │ │  │      │  │                     │         │
+│     │            │ │ exec get <kind> ...      │ │  │      │  └─────────────────────┘         │
+│     │            │ │ exec list <kind> ...     │ │  │      │  ┌─────────────────────┐         │
+│     │            │ │ exec put <kind> ...      │ │  │      │  │ Git Repository      │         │
+│     │            │ │ exec delete <kind> ...   │ │  │      │  │                     │         │
+│     │            │ │                          │ │  │      │  │                     │         │
+│     │            │ └───────▲─────────┬────────┘ │  │      │  │                     │         │
+│  A  ◀────────────┤         │         │          │  │      │  │                     │         │
+│  P  │            │ ┌───────┴─────────▼────────┐ │  │      │  └─────────────────────┘         │
+│  I  │            │ │ Source                   ◀─┼──┘  ┌───▶                                  │
+│     │            │ │                          │ │     │   │                                  │
+│  S  │            │ └──────────────────────────┘ ├─────┘   └──────────────────────────────────┘
+│  e  │            └──────────────────────────────┘         ┌──────────────────────────────────┐
+│  r  │                                                     │ GitLab                           │
+│  v  │                                                     │                                  │
+│  e  │            ┌──────────────────────────────┐         │  ┌─────────────────────┐         │
+│  r  │            │ Controller                   │         │  │ Git Repository      │         │
+│     ├────────────▶                              │         │  │                     │         │
+│     │            │  apps/Deployment/v1          │         │  │                     │         │
+│     ◀────────────┤                              │         │  │                     │         │
+│     │            │ ...                          │         │  │                     │         │
+│     │            └──────────────────────────────┘         │  └─────────────────────┘         │
+│     │            ┌──────────────────────────────┐         │  ┌─────────────────────┐         │
+│     │            │ Controller                   │         │  │ Git Repository      │         │
+│     ├────────────▶                              │         │  │                     │         │
+│     │            │  my.org/Server/v1alpha1      │         │  │                     │         │
+│     ◀────────────┤                              │         │  │                     │         │
+│     │            │ ...                          │         │  │                     │         │
+│     │            └──────────────────────────────┘         │  └─────────────────────┘         │
+│     │                                                     │                                  │
+│     │              ...                                    │                                  │
+└─────┘                                                     └──────────────────────────────────┘
+```
