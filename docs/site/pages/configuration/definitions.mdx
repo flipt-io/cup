@@ -1,0 +1,112 @@
+Resource Definitions
+--------------------
+
+Resource definitions live in the directory identified by `-api-resources`.
+Each definition contains the group, kind and versioned schemas for resource types handled by Cup.
+These definitions are heavily inspired by Kubernetes' concept of Customer Resource Definitions.
+
+Any file in the API resources directory ending in `.json` is currently parsed and interpreted.
+Depending on the `apiVersion` and `kind` of the resource, they each get treated accordingly.
+
+```json
+{
+  "apiVersion": "cup.flipt.io/v1alpha1",
+  "kind": "ResourceDefinition",
+  "metadata": {
+    "name": "flags.flipt.io"
+  },
+  "names": {
+    "kind": "Flag",
+    "singular": "flag",
+    "plural": "flags"
+  },
+  "spec": {
+    "group": "flipt.io",
+    "versions": {
+      "v1alpha1": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "enum": ["", "FLAG_TYPE_VARIANT", "FLAG_TYPE_BOOLEAN"] },
+          "enabled": { "type": "boolean" },
+          "description": { "type": "string" },
+          "variants": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "description": { "type": "string" },
+                "attachment": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "rules": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object"
+            }
+          },
+          "rollouts": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
+```
+
+## Specification
+
+### Resource
+
+Each controller resource definition has the following top-level fields.
+Both `apiVersion` and `kind` are fixed constants, but `metadata` and `spec` can be configured accordingly.
+
+| Key        | Value                                                 |
+|------------|-------------------------------------------------------|
+| apiVersion | `"cup.flipt.io/v1alpha1"`                             |
+| kind       | `"ResourceDefinition"`                                |
+| metadata   | [`<Metadata>`](#metadata)                             |
+| names      | [`<Names>`](#names)                                   |
+| spec       | [`<ResourceDefinitionSpec>`](#resourcedefinitionspec) |
+
+### Metadata
+
+Resource definitions have a single metadata string field `name`.
+Each configured definition should be uniquely named.
+These names are referenced in `APIBinding` resources when associating them with `Controller`s and exposing them through the cup API.
+
+| Key  | Value    | Description                                                                       |
+|------|----------|-----------------------------------------------------------------------------------|
+| name | `string` | Unique identifier for the resource kind in the form `<names.plural>.<spec.group>` |
+
+### Names
+
+Names is taken straight out of the Kubernetes CRD playbook.
+These name forms are used throughout the API and in the CLI.
+
+| Key      | Value    | Description                                             |
+|----------|----------|---------------------------------------------------------|
+| kind     | `string` | Uppercase name of the resource kind                     |
+| singular | `string` | Lowercase name for a single instance of the resource    |
+| plural   | `string` | Lowercase name for a multuple instances of the resource |
+
+### ResourceDefinitionSpec
+
+The resource definition spec contains the resource group along with a map of versioned JSON schema payloads.
+Each schema is used to validated incoming resources, and can be retrieved through the generated API to support tooling.
+
+| Key      | Value                   | Description                                                               |
+|----------|-------------------------|---------------------------------------------------------------------------|
+| group    | `string`                | An identifier for the group the resource belongs to                       |
+| versions | `map[string]JSONSchema` | A map of version string to JSON Schema definition of the resource payload |

@@ -1,0 +1,37 @@
+Configuration
+-------------
+
+This section is primarily concerned with configuring an instance of `cupd`.
+`cupd` is the server side component of the Cup ecosystem.
+This is where all the components for checking out repositories, hosting and managing API resources, transforming contents and making proposals to Git repositories takes place.
+
+## `cupd`
+
+`cupd` the binary starts with some top-level configuration parameters.
+
+These parameters can be adjusted in three different ways:
+- As command-line flags
+- As environment variables
+- Via a configuration yaml file
+
+### `cupd serve`
+
+```console
+➜  cupd serve --help
+DESCRIPTION
+  Run the cupd server
+
+USAGE
+  cupd serve [flags]
+
+FLAGS
+  -api-address :8181          server listen address
+  -api-git-repo string        target git repository URL
+  -api-git-scm github         SCM type (one of [github, gitea])
+  -api-local-path .           path to local source directory
+  -api-resources .            path to server configuration directory (controllers, definitions and bindings)
+  -api-source local           source type (one of [local, git])
+  -tailscale-auth-key string  Tailscale auth key (optional)
+  -tailscale-ephemeral=false  join the network as an ephemeral node (optional)
+  -tailscale-hostname string  hostname to expose on Tailscale
+```
