@@ -12,7 +12,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.flipt.io/cup/build/hack"
 	"go.flipt.io/cup/build/testing"
-	"golang.org/x/exp/slog"
 )
 
 const (
