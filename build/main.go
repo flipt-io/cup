@@ -197,7 +197,7 @@ func withBase(ctx context.Context, fn func(client *dagger.Client, base *dagger.C
 		p := platforms.MustParse(string(platform))
 
 		base := client.Container().
-			From("golang:1.21rc3-alpine3.18").
+			From("golang:1.21-alpine3.18").
 			WithEnvVariable("GOCACHE", goBuildCachePath).
 			WithEnvVariable("GOMODCACHE", goModCachePath).
 			WithEnvVariable("GOOS", p.OS).
