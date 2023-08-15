@@ -17,7 +17,7 @@ func New(handler slog.Handler) func(next http.Handler) http.Handler {
 	)
 }
 
-// EntrySet extends request's [*slog.Logger] with additional fields. Argumennts are converted to
+// EntrySet extends request's [*slog.Logger] with additional fields. Arguments are converted to
 // attributes as if by [(*slog.Logger).Log].
 func EntrySet(r *http.Request, attrs ...any) {
 	if entry, ok := middleware.GetLogEntry(r).(*logEntry); ok {
