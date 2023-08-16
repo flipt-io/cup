@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/flipt-io/cup/blob/main/go.mod">
-    <img alt="Go version 1.21" src="https://img.shields.io/github/go-mod/go-version/flipt-io/cup">
+    <img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/flipt-io/cup">
   </a>
   <a href="https://github.com/flipt-io/cup/blob/main/LICENSE">
     <img alt="Apache v2" src="https://img.shields.io/github/license/flipt-io/cup">
@@ -44,7 +44,7 @@ If you have a second, we would greatly appreciate your input on this [feedback f
 
 - [Features](#features)
 - [Roadmap](#roadmap)
-- [Use-cases](#use-cases)
+- [Use cases](#use-cases)
 - [Dependencies](#dependencies)
 - [Server](#server)
 - [CLI](#cli)
@@ -63,7 +63,7 @@ If you have a second, we would greatly appreciate your input on this [feedback f
 - [ ] 🛰️ Track open proposals directly through the `cupd` API
 - [ ] 🔒 Secure access via authorization policies
 
-## Use-cases
+## Use cases
 
 Cup is a foundation on which to build tooling around configuration repositories.
 We imagine folks may find all sorts of weird and wonderful applications for Cup (and we want to hear about them).
