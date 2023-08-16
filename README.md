@@ -74,6 +74,7 @@ Some ideas we're brewing:
 - A dashboard for exploring and editing how your services are configured
 - Access controlled management for infrastructure change requests
 - New project or service templating (project structure, build, test and deploy pipelines)
+- Expose configuration controls (e.g. feature flags, resource requests) to non-Git users
 
 ## Dependencies
 
