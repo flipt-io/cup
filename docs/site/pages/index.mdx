@@ -3,14 +3,16 @@ import { Callout } from 'nextra/components'
 Cup
 ---
 
-<Callout type="info" emoji="🥤">
+<Callout emoji="🥤">
 Because Git deserves better contribution automation
 </Callout>
 
-Cup is an extensible server for building automation around contributions to Git and SCMs like GitHub.
+Cup is an extensible server for building automation around introspection and contributions to Git and SCMs like GitHub.
 It exposes a consistent declarative API, with an opinionated convention based on Kubernetes.
 The API is self-describing, allowing for tooling to be developed with broad applicability to a range of usecases.
-All changes made to API resources are handled by Controllers. Controllers do the heavy lifting when it comes to changing the contents of a repository based on the desired state of an API resource. Any calculated changes are proposed as pull or merge requests on your prefered SCM (GitHub, Gitea etc.).
+All changes made to API resources are handled by Controllers.
+Controllers do the heavy lifting when it comes to changing the contents of a repository based on the desired state of an API resource.
+Any calculated changes are proposed as pull or merge requests on your prefered SCM (GitHub, Gitea etc.).
 
 ```
 ┌─────┐            ┌──────────────────────────────┐         ┌──────────────────────────────────┐
@@ -33,7 +35,7 @@ All changes made to API resources are handled by Controllers. Controllers do the
 │     │            │ │                          │ │     │   │                                  │
 │  S  │            │ └──────────────────────────┘ ├─────┘   └──────────────────────────────────┘
 │  e  │            └──────────────────────────────┘         ┌──────────────────────────────────┐
-│  r  │                                                     │ GitLab                           │
+│  r  │                                                     │ Gitea                            │
 │  v  │                                                     │                                  │
 │  e  │            ┌──────────────────────────────┐         │  ┌─────────────────────┐         │
 │  r  │            │ Controller                   │         │  │ Git Repository      │         │
