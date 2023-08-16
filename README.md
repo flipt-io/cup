@@ -1,10 +1,3 @@
-> ⚠️ This is an active experiment into the benefits of managing an API over Git.
-> Expect it to change quite frequently.
-> Regardless, we really want your input, so please do give it a go.
-
-`cup` An Instant API for Git
-----------------------------
-
 <div align="center">
   <a href="https://github.com/flipt-io/cup/blob/main/go.mod">
     <img alt="Go version 1.21" src="https://img.shields.io/github/go-mod/go-version/flipt-io/cup">
@@ -20,11 +13,18 @@
   </a>
 </div>
 
+> ⚠️ This is an active experiment into the benefits of managing an API over Git.
+> Expect it to change quite frequently.
+> Regardless, we really want your input, so please do give it a go.
+
+`cup` An Instant API for Git
+----------------------------
+
 <div align="center">
   <img src="https://github.com/flipt-io/cup/assets/1253326/d408dbe2-51bf-414e-93ec-603e09d5c1fa" alt="CUP" width="240" />
 </div>
 
-Cup brings Git repositories to life.
+Cup helps you build APIs and automation ontop of your Git repositories.
 
 A configurable and extensible server for managing and exposing API resources directly from a target Git repository.
 It exposes a Kubernetes-like declarative API, which organizes resources into typed (group + version + kind) sets.
@@ -33,17 +33,18 @@ calculated difference is automatically proposed as a pull or merge request on a 
 How resources map to and from API request payloads to files in your repository is handled by [Controllers](#controllers).
 Controllers are configurable and broadly extensible through the power of WASM via the [Wazero](htts://github.com/tetratelabs/wazero) runtime.
 
-[Cup and Flipt Demo Video](https://github.com/flipt-io/cup/assets/1253326/9c045493-c7c1-44ad-9066-9649de8b57c1)
-
 ## 📣 Feedback
 
 We really want to learn how you do configuration management.
 If you have a second, we would greatly appreciate your input on this [feedback form](https://1ld82idjvlr.typeform.com/to/egIn3GLO).
 
+[Cup and Flipt Demo Video](https://github.com/flipt-io/cup/assets/1253326/9c045493-c7c1-44ad-9066-9649de8b57c1)
+
 ## Table of Contents
 
 - [Features](#features)
 - [Roadmap](#roadmap)
+- [Use-cases](#use-cases)
 - [Dependencies](#dependencies)
 - [Server](#server)
 - [CLI](#cli)
@@ -61,6 +62,18 @@ If you have a second, we would greatly appreciate your input on this [feedback f
 - [ ] 📦 Package and distribute controllers as OCI images
 - [ ] 🛰️ Track open proposals directly through the `cupd` API
 - [ ] 🔒 Secure access via authorization policies
+
+## Use-cases
+
+Cup is a foundation on which to build tooling around configuration repositories.
+We imagine folks may find all sorts of weird and wonderful applications for Cup (and we want to hear about them).
+
+Some ideas we're brewing:
+
+- A central CLI for exploring and editing the state of your configuration repositories
+- A dashboard for exploring and editing how your services are configured
+- Access controlled management for infrastructure change requests
+- New project or service templating (project structure, build, test and deploy pipelines)
 
 ## Dependencies
 
