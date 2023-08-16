@@ -6,6 +6,21 @@
 ----------------------------
 
 <div align="center">
+  <a href="https://github.com/flipt-io/cup/blob/main/go.mod">
+    <img alt="Go version 1.21" src="https://img.shields.io/github/go-mod/go-version/flipt-io/cup">
+  </a>
+  <a href="https://github.com/flipt-io/cup/blob/main/LICENSE">
+    <img alt="Apache v2" src="https://img.shields.io/github/license/flipt-io/cup">
+  </a>
+  <a href="https://github.com/flipt-io/cup/actions">
+      <img src="https://github.com/flipt-io/cup/actions/workflows/test.yml/badge.svg" alt="Build Status" />
+  </a>
+  <a href="https://discord.gg/kRhEqG2TEZ">
+      <img alt="Discord" src="https://img.shields.io/discord/960634591000014878?color=%238440f1&label=Discord&logo=discord&logoColor=%238440f1&style=flat">
+  </a>
+</div>
+
+<div align="center">
   <img src="https://github.com/flipt-io/cup/assets/1253326/d408dbe2-51bf-414e-93ec-603e09d5c1fa" alt="CUP" width="240" />
 </div>
 
@@ -25,65 +40,55 @@ Controllers are configurable and broadly extensible through the power of WASM vi
 We really want to learn how you do configuration management.
 If you have a second, we would greatly appreciate your input on this [feedback form](https://1ld82idjvlr.typeform.com/to/egIn3GLO).
 
+## Table of Contents
+
+- [Features](#features)
+- [Roadmap](#roadmap)
+- [Dependencies](#dependencies)
+- [Server](#server)
+- [CLI](#cli)
+
 ## Features
 
 ![cup-diagram](https://github.com/flipt-io/cup/assets/1253326/7a88d16c-c2c9-4d5b-8547-02c71043fd27)
 
 - 🔋 Materialize API resources directly from Git
 - 🏭 Manage change through a declarative API
-- 🔩 Extend `cup` in your language of choice
+- 🔩 Extend using the power of WASM
 
 ## Roadmap
 
-- [ ] 🛰️ Track open proposals directly in `cup`
+- [ ] 📦 Package and distribute controllers as OCI images
+- [ ] 🛰️ Track open proposals directly through the `cupd` API
 - [ ] 🔒 Secure access via authorization policies
-
-## Table of Contents
-
-- [Dependencies](#dependencies)
-- [Building](#building)
-  - [`cupd` Server](#cupd-server)
-    - [Configuration](#configuration)
-      - [General](#general-configuration)
-      - [Resource Definitions](#resource-definitions)
-      - [Controllers](#controllers)
-      - [Bindings](#bindings)
-  - [`cup` CLI](#cup-cli)
 
 ## Dependencies
 
 - Go (>= 1.20)
 - An SCM (Currently supported: GitHub, Gitea)
 
-## Building
+## Server
 
-`cup` is actively being developed and very much in its infancy.
-For now, to play with `cup` you will need to clone this project and build from source.
+The server component of the Cup project is known as `cupd`.
+It is a configurable API server, which exposes and manages the state of a target repository.
 
-### `cupd` Server
+### Building
 
-`cupd` is the server portion of the `cup` project.
-It handles sources to target repositories, manifesting resource APIs, and transformations through resource controllers.
+For now, to play with `cupd` you will need to clone this project and build from source.
 
+From the root of this project, run:
+
+```console
+mkdir -p bin
+
+go build -o bin/cupd ./cmd/cupd/...
 ```
-go install ./cmd/cupd/...
-```
 
-#### Configuration
+This will produce a binary `cupd` in the local folder `bin`.
 
-A `cupd` instance has a number of configuration mechanisms.
-It first helps to understand the different mechanisms involved in configuring a Cup server.
+### Usage
 
-1. General top-level `cupd` configuration
-2. Resource Definitions
-3. Controllers
-4. Bindings
-
-##### General Configuration
-
-This is the top-level set of configuration which can be provided via CLI flags, environment variables, or a configuration YAML file.
-You can see what `cupd` requires by simply invoking the following:
-```
+```console
 ➜  cupd serve -h
 DESCRIPTION
   Run the cupd server
@@ -92,264 +97,35 @@ USAGE
   cupd serve [flags]
 
 FLAGS
-  -api-address :8181    server listen address
-  -api-git-repo string  target git repository URL
-  -api-git-scm github   SCM type (one of [github, gitea])
-  -api-local-path .     path to local source directory
-  -api-resources .      path to server configuration directory (controllers, definitions and bindings)
-  -api-source local     source type (one of [local, git])
+  -api-address :8181          server listen address
+  -api-git-repo string        target git repository URL
+  -api-git-scm github         SCM type (one of [github, gitea])
+  -api-local-path .           path to local source directory
+  -api-resources .            path to server configuration directory (controllers, definitions and bindings)
+  -api-source local           source type (one of [local, git])
+  -tailscale-auth-key string  Tailscale auth key (optional)
+  -tailscale-ephemeral=false  join the network as an ephemeral node (optional)
+  -tailscale-hostname string  hostname to expose on Tailscale
 ```
 
-One thing of note is the `-api-resources` flag which configures the location of `cupd`'s API resource directory.
-This directory should contain a bunch of API resource instances which we will talk about in the following configuration sections.
-
-Each of the flags can be alternatively provided as an environment variable.
-The convention for environment variable naming is: `CUPD{{ uppercase(replace(flag, "-", "_")) }}`.
-
-For example, `-api-address` can be expressed via `CUPD_API_ADDRESS`.
-
-Finally, a configuration YAML file can be used instead.
-This also follows a naming convention that tokenizes flag keys on `-`.
-
-<details>
-
-<summary>Example cup config.yml</summary>
-
-```yaml
-api:
-  address: ":8181"
-  source: "git"
-  resources: "/etc/cupd/config/resources"
-  git:
-    scm: "github"
-    repo: "http://username:PAT@github.com/yourrepo/something.git"
-```
-
-</details>
-
-##### Resource Definitions
-
-Resource definitions live in the directory identified by `-api-resources`.
-Each definition contains the group, kind and versioned schemas for resource types handled by Cup.
-These definitions are heavily inspired by Kubernetes' concept of Customer Resource Definitions.
-
-Any file in the API resources directory ending in `.json` is currently parsed and interpreted.
-Depending on the `apiVersion` and `kind` of the resource, they each get treated accordingly.
-
-Each resource definition configuration payload includes the following top-level fields:
-
-| Key        | Value                      |
-|------------|----------------------------|
-| apiVersion | `"cup.flipt.io/v1alpha1"`  |
-| kind       | `"ResourceDefinition"`     |
-| metadata   | `<Metadata>`               |
-| names      | `<Names>`                  |
-| spec       | `<ResourceDefinitionSpec>` |
-
-<details>
-
-<summary>Example Flipt flag resource definition</summary>
-
-```json
-{
-  "apiVersion": "cup.flipt.io/v1alpha1",
-  "kind": "ResourceDefinition",
-  "metadata": {
-    "name": "flags.flipt.io"
-  },
-  "names": {
-    "kind": "Flag",
-    "singular": "flag",
-    "plural": "flags"
-  },
-  "spec": {
-    "group": "flipt.io",
-    "versions": {
-      "v1alpha1": {
-        "type": "object",
-        "properties": {
-          "key": { "type": "string" },
-          "name": { "type": "string" },
-          "type": { "enum": ["", "FLAG_TYPE_VARIANT", "FLAG_TYPE_BOOLEAN"] },
-          "enabled": { "type": "boolean" },
-          "description": { "type": "string" },
-          "variants": {
-            "type": ["array", "null"],
-            "items": {
-              "type": "object",
-              "properties": {
-                "key": { "type": "string" },
-                "description": { "type": "string" },
-                "attachment": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "rules": {
-            "type": ["array", "null"],
-            "items": {
-              "type": "object"
-            }
-          },
-          "rollouts": {
-            "type": ["array", "null"],
-            "items": {
-              "type": "object"
-            }
-          }
-        },
-        "additionalProperties": false
-      }
-    }
-  }
-}
-```
-
-</details>
-
-##### Controllers
-
-Controllers are the engines that drive reading and writing changes to target configuration sources (directories, repositories etc.).
-Internally, Cup abstracts away the details of Git repositories, commits, trees, and pull requests.
-Controllers focus on handling individual actions over a mounted target directory.
-
-These actions currently include:
-
-- get
-- list
-- put
-- delete
-
-Each controller is configured via a JSON file in the `-api-resources` directory.
-The files contain the following top-level fields:
-
-| Key        | Value                     |
-|------------|---------------------------|
-| apiVersion | `"cup.flipt.io/v1alpha1"` |
-| kind       | `"Controller"`            |
-| metadata   | `<Metadata>`              |
-| spec       | `<ControllerSpec>`        |
-
-There are currently two types of controller configurable in Cup:
-
-- Template
-- WASM
-
-**Template**
-
-Is a simple, built-in controller which uses Go's `text/template` to perform 1:1 API resource to file in repo mappings.
-
-There exist two templates:
-
-1. Directory Template
-
-This is used during `list` operations to map a namespace onto a target directory exclusively containing files that each represent a single resource instance.
-It can be configured with glob syntax to further constrain, which files in a target directory are considered resources.
-
-2. Path Template
-
-This is used during `get`, `put`, and `delete` operations to identify the particular file the resource should be read from, written to, or deleted respectively.
-
-<details>
-
-<summary>Example template controller</summary>
-
-```json
-{
-  "apiVersion": "cup.flipt.io/v1alpha1",
-  "kind": "Controller",
-  "metadata": {
-    "name": "some-template-controller"
-  },
-  "spec": {
-    "type": "template",
-    "spec": {
-      "directory_template": "{{ .Namespace }}/*.json"
-      "path_template": "{{ .Namespace }}/{{ .Group }}-{{ .Version }}-{{ .Kind }}-{{ .Name }}.json"
-    }
-  }
-}
-```
-
-</details>
-
-**WASM**
-
-The WASM controller is an extension point that opens Cup up to the full power of languages which can be compiled to WASM with the WASIP1 extensions.
-Given your controller can be expressed as a command-line tool, conforming to Cup's well-defined set of sub-commands and standard I/O expectations, implemented in a language compiled to WASM with WASIP1, then it can be used in Cup.
-
-To learn more about the binary API required for a Cup WASM controller, check out the [Design](./docs/DESIGN.md) document in this repo.
-Cup is a very early prototype and this design is likely to change and open to suggestions.
-
-Given your resulting controller WASM binary is present and reachable on the filesystem by `cupd`, then it can be leveraged by Cup to handle your particular resource management needs.
-
-The Controller resource specification includes a single field `path` which should point to where the WASM implementation exists on disk.
-This path will resolve relative to the `-api-resources` directory.
-
-<details>
-
-<summary>Example Flipt WASM controller</summary>
-
-```json
-{
-  "apiVersion": "cup.flipt.io/v1alpha1",
-  "kind": "Controller",
-  "metadata": {
-    "name": "flipt"
-  },
-  "spec": {
-    "type": "wasm",
-    "spec": {
-      "path": "flipt.wasm"
-    }
-  }
-}
-```
-
-</details>
-
-##### Bindings
-
-Bindings are the last crucial mechanism for exposing resources via the Cup API.
-A binding defines which resource types should be exposed and what controller should handle their operations.
-
-<details>
-
-<summary>Example Binding for Flipt resources and associated controller</summary>
-
-```json
-{
-  "apiVersion": "cup.flipt.io/v1alpha1",
-  "kind": "Binding",
-  "metadata": {
-    "name": "flipt"
-  },
-  "spec": {
-    "controller": "flipt",
-    "resources": [
-      "flipt.io/v1alpha1/flags",
-      "flipt.io/v1alpha1/segments"
-    ]
-  }
-}
-```
-
-</details>
-
-### `cup` CLI
+## CLI
 
 `cup` is a CLI that is heavily influenced by `kubectl`.
-It can be used locally to interact and introspect into a running `cupd`.
+It can be used locally to interact and introspect a running `cupd`.
 
+### Building
+
+```console
+mkdir -p bin
+
+go build -o bin/cup ./cmd/cup/...
 ```
-go install ./cmd/cup/...
-```
 
-#### Usage
+This will produce a binary `cup` in the local folder `bin`.
 
-```bash
+### Usage
+
+```console
 NAME:
    cup - Manage remote cupd instances
 
@@ -362,13 +138,18 @@ COMMANDS:
    discovery:
      definitions, defs  List the available resource definitions
    resource:
-     get    Get one or more resources
-     apply  Put a resource from file on stdin
+     get     Get one or more resources
+     apply   Put a resource from file on stdin
+     edit    Edit a resource
+     delete  Delete a resource
 
 GLOBAL OPTIONS:
-   --config value, -c value  (default: "$HOME/Library/Application Support/cup/config.json")
-   --output value, -o value  (default: "table")
-   --help, -h                show help
+   --config value, -c value     (default: "/Users/georgemac/Library/Application Support/cup/config.json")
+   --output value, -o value     (default: "table")
+   --address value, -a value
+   --namespace value, -n value
+   --level value, -l value      set the logging level (default: "info")
+   --help, -h                   show help
 ```
 
 ## Appreciation
@@ -384,4 +165,4 @@ Built on:
 Inspired by:
 
 - [Kubernetes](https://kubernetes.io/)
-- Our own wonderful [Flipt](https://github.com/flipt-io/flipt).
+- Our own wonderful [Flipt](https://github.com/flipt-io/flipt)
