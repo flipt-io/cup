@@ -1,0 +1,58 @@
+Concepts
+--------
+
+The goal of Cup is to create some order in the chaos that is managing and communicating Git repository project structure.
+
+## The Problem
+
+As your projects grow, so likely does the number of contributors and if you're onto something the demand for your product.
+Managing the organization of Git repositories as they grow can be a big challenge.
+
+The liklihood is, your repositories contain a whole host of application and configuration code.
+- Some of it will be directly responsible for the function of your end-product
+- Some might define non-functional requirements (observability, security and networking)
+- Some will configure what to build, how to test and where to distribute
+
+Every organization manages this chaos differently, and Cup respects that.
+What Cup aims to do is give you the tools to codify your style, automate the busy work, and improve discoverability.
+
+While there are a lot of intricate and important details in your repositories, the likelihood is there are some higher-level kinds of resources that are ultimately being described.
+
+- Databases
+- Services
+- Features
+- Clusters
+
+## The Solution
+
+Cup allows you categorize and expose these resources through a consistent, declarative and self-describing API.
+
+But what does this mean?
+
+### Consistent
+
+The API is consistent from one resource kind to the next.
+Retrieving, searching, updating and removing should be the same for a service as it is for a logical feature or database.
+
+Retrieval, update and removal requires instances of each kind to be uniquely addressable (group, version, kind, namespace and name).
+Search and cataloguing requires a taxonomy on which to organize and facet discovery (groups, namespaces and labels).
+
+### Declarative
+
+The API expresses resources through a logical representation of _what_ is contained in the repository, as opposed to _how_ it is stored.
+The _how_ is defined inside **controllers**, where you can extend Cup to suit your layour and format requirements.
+
+Controllers combine the state of the Git repository at a particular reference, with a desired state of a resource to calculate a difference to be proposed via a pull or merge request on a target SCM (GitHub, Gitea etc.).
+
+### Self-describing
+
+Each resource has a structured schema, which can be requested via the API.
+This schema can be used by external tools in order to present meaningful interfaces or enable further automation to be built.
+
+## What's next
+
+In order to achieve this, there are a few core concepts that come together to make Cup what it is.
+
+1. [Resource Definitions](/concepts/definitions)
+2. [Controllers](/concepts/controllers)
+3. [Bindings](/concepts/bindings)
