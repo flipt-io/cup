@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from './components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { TableIcon, DashboardIcon } from '@radix-ui/react-icons'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { TableIcon, DashboardIcon } from '@radix-ui/react-icons';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 
 const loopThroughNDJSON = async (reader: any): Promise<any[]> => {
   let done = false;
@@ -64,9 +64,13 @@ const Resources: React.FunctionComponent<any> = () => {
         </Badge>
       </h1>
       <Tabs defaultValue="account" className="w-full">
-        <TabsList className='mb-4'>
-          <TabsTrigger value="table"><TableIcon /></TabsTrigger>
-          <TabsTrigger value="cards"><DashboardIcon /></TabsTrigger>
+        <TabsList className="mb-4">
+          <TabsTrigger value="table">
+            <TableIcon />
+          </TabsTrigger>
+          <TabsTrigger value="cards">
+            <DashboardIcon />
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="table">
           <Table>
@@ -78,7 +82,7 @@ const Resources: React.FunctionComponent<any> = () => {
             </TableHeader>
             <TableBody>
               {resources.map((resource) => {
-                  return (
+                return (
                   <TableRow
                     key={`row/${resource.metadata.namespace}/${resource.metadata.name}`}
                   >
@@ -88,31 +92,34 @@ const Resources: React.FunctionComponent<any> = () => {
                     <TableCell className="text-left">
                       {resource.metadata.name}
                     </TableCell>
-                    </TableRow>
-                  );
+                  </TableRow>
+                );
               })}
             </TableBody>
           </Table>
         </TabsContent>
         <TabsContent value="cards">
-          <div className='flex'>
-            {
-              resources.map((resource) => {
-                return (
-                  <Card className='w-1/3 mr-auto text-left' key={`card/${resource.metadata.namespace}/${resource.metadata.name}`}>
-                    <CardHeader>
-                      <CardTitle>
-                        <span className='text-muted-foreground'>{resource.metadata.namespace}/</span>
-                        {resource.metadata.name}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p>Card Content</p>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            }
+          <div className="flex">
+            {resources.map((resource) => {
+              return (
+                <Card
+                  className="w-1/3 mr-auto text-left"
+                  key={`card/${resource.metadata.namespace}/${resource.metadata.name}`}
+                >
+                  <CardHeader>
+                    <CardTitle>
+                      <span className="text-muted-foreground">
+                        {resource.metadata.namespace}/
+                      </span>
+                      {resource.metadata.name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>Card Content</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
       </Tabs>
