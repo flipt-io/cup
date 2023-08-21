@@ -15,36 +15,42 @@
       "v1alpha1": {
         "type": "object",
         "properties": {
-          "key": { "type": "string" },
-          "name": { "type": "string" },
-          "type": { "enum": ["", "VARIANT_FLAG_TYPE", "BOOLEAN_FLAG_TYPE"] },
-          "enabled": { "type": "boolean" },
-          "description": { "type": "string" },
-          "variants": {
-            "type": ["array", "null"],
-            "items": {
-              "type": "object",
-              "properties": {
-                "key": { "type": "string" },
-                "description": { "type": "string" },
-                "attachment": {
+          "spec": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string" },
+              "name": { "type": "string" },
+              "type": { "enum": ["", "VARIANT_FLAG_TYPE", "BOOLEAN_FLAG_TYPE"] },
+              "enabled": { "type": "boolean" },
+              "description": { "type": "string" },
+              "variants": {
+                "type": ["array", "null"],
+                "items": {
                   "type": "object",
-                  "additionalProperties": true
+                  "properties": {
+                    "key": { "type": "string" },
+                    "description": { "type": "string" },
+                    "attachment": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              },
+              "rules": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "object"
+                }
+              },
+              "rollouts": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "object"
                 }
               }
-            }
-          },
-          "rules": {
-            "type": ["array", "null"],
-            "items": {
-              "type": "object"
-            }
-          },
-          "rollouts": {
-            "type": ["array", "null"],
-            "items": {
-              "type": "object"
-            }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": true

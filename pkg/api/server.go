@@ -137,8 +137,9 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 	defer s.mu.Unlock()
 
 	var (
-		prefix = fmt.Sprintf("/apis/%s/%s/namespaces/{ns}/%s", def.Spec.Group, version, def.Names.Plural)
-		named  = prefix + "/{name}"
+		definition = fmt.Sprintf("/apis/%s/%s", def.Spec.Group, def.Names.Plural)
+		prefix     = fmt.Sprintf("/apis/%s/%s/namespaces/{ns}/%s", def.Spec.Group, version, def.Names.Plural)
+		named      = prefix + "/{name}"
 	)
 
 	slog.Debug("Registering routes", "prefix", prefix)
@@ -147,6 +148,13 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 	if err != nil {
 		return err
 	}
+
+	// definition
+	s.mux.Get(definition, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewEncoder(w).Encode(def); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}))
 
 	// list kind
 	s.mux.Get(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

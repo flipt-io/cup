@@ -203,7 +203,9 @@ func withBase(ctx context.Context, fn func(client *dagger.Client, base *dagger.C
 			WithEnvVariable("GOOS", p.OS).
 			WithEnvVariable("GOARCH", p.Architecture).
 			WithExec([]string{"apk", "add", "gcc", "build-base"}).
-			WithMountedDirectory("/src", client.Host().Directory(".")).
+			WithDirectory("/src", client.Host().Directory("."), dagger.ContainerWithDirectoryOpts{
+				Exclude: []string{"./ui"},
+			}).
 			WithWorkdir("/src")
 
 		sumContents, err := base.File("go.work.sum").Contents(ctx)
