@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ndjsonStream from 'can-ndjson-stream';
 import { useParams } from 'react-router-dom';
 import {
@@ -35,9 +35,19 @@ const Resources: React.FunctionComponent<any> = () => {
     namespace: string;
     kind: string;
   }>();
-  const [resources, setResources] = React.useState<any[]>([]);
+  const [definition, setDefinition] = useState<any>([]);
+  const [resources, setResources] = useState<any[]>([]);
 
   useEffect(() => {
+    const fetchDefinition = async () => {
+      let response = await fetch(
+        `http://localhost:8181/apis/${group}/${kind}`
+      );
+      setDefinition(await response.json());
+    };
+
+    fetchDefinition();
+
     const fetchData = async () => {
       let response = await fetch(
         `http://localhost:8181/apis/${group}/${version}/namespaces/${namespace}/${kind}`
@@ -50,8 +60,40 @@ const Resources: React.FunctionComponent<any> = () => {
     fetchData();
   }, []);
 
+
   if (!resources) {
     return null;
+  }
+
+  if (!definition || !definition.spec || !definition.spec.versions) {
+    return null;
+  }
+
+  if (!version) {
+    return null;
+  }
+
+  const schema = definition.spec.versions[version];
+
+  const renderProps = (props: any, resource: any) : React.ReactNode => {
+    console.log(props);
+    console.log(resource);
+    return (
+      <>
+        {
+          Object.entries(props).map(([key]) => {
+            (
+              <div key={`card/${resource.metadata.namespace}/${resource.metadata.name}/${key}`}>
+                <span className="text-muted-foreground">
+                  {key}:
+                </span>
+                <span className="ml-2">{`${resource.spec[key]}`}</span>
+              </div>
+            );
+          })
+        }
+      </>
+    )
   }
 
   return (
@@ -103,7 +145,7 @@ const Resources: React.FunctionComponent<any> = () => {
             {resources.map((resource) => {
               return (
                 <Card
-                  className="w-1/3 mr-auto text-left"
+                  className="w-1/2 mr-3 text-left"
                   key={`card/${resource.metadata.namespace}/${resource.metadata.name}`}
                 >
                   <CardHeader>
@@ -115,7 +157,9 @@ const Resources: React.FunctionComponent<any> = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p>Card Content</p>
+                    {
+                      renderProps(schema.properties, resource)
+                    }
                   </CardContent>
                 </Card>
               );
