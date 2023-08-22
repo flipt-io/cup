@@ -201,7 +201,7 @@ func Variant(client *dagger.Client, base *dagger.Container, platform dagger.Plat
 	return client.
 		Container(dagger.ContainerOpts{Platform: platform}).
 		From("alpine:3.18").
-		WithExec([]string{"mkdir", "-p", "/var/run/cupd"}).
+		WithExec([]string{"mkdir", "-p", "/var/run/cupd", "/etc/cupd/config"}).
 		WithWorkdir("/var/run/cupd").
 		WithFile("/usr/local/bin/cupd", base.File(path.Join(binDir, "cupd"))).
 		WithFile("/usr/local/bin/cup", base.File(path.Join(binDir, "cup"))).
