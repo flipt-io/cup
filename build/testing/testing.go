@@ -2,14 +2,25 @@ package testing
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"dagger.io/dagger"
+	"github.com/containerd/containerd/platforms"
 	"go.flipt.io/cup/build/testing/integration"
 )
 
 func Integration(ctx context.Context, client *dagger.Client, base, cupd *dagger.Container) error {
-	base = base.WithWorkdir("build/testing/template")
+	platform, err := client.DefaultPlatform(ctx)
+	if err != nil {
+		return err
+	}
+
+	p := platforms.MustParse(string(platform))
+
+	base = base.WithFile("/usr/local/bin/cup", base.File(fmt.Sprintf("bin/%s/%s/cup", p.OS, p.Architecture))).
+		WithWorkdir("build/testing/template")
+
 	cupd = cupd.WithMountedDirectory("/etc/cupd/config", base.Directory("testdata/config"))
 
 	{

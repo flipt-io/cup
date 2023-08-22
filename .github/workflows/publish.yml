@@ -6,12 +6,18 @@ on:
 
 jobs:
   unit:
-    name: Publish Flipt Cup
+    name: Publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
-
+    strategy:
+      matrix:
+        include:
+          - image: cup/cupd:latest
+            command: publish
+          - image: cup/flipt:latest
+            command: hack fliptcup publish
     steps:
       - uses: actions/setup-go@v3
         with:
@@ -30,5 +36,5 @@ jobs:
           CUP_BUILD_REGISTRY: ghcr.io
           CUP_BUILD_USERNAME: "${{ github.repository_owner }}"
           CUP_BUILD_PASSWORD: "${{ secrets.GITHUB_TOKEN }}"
-          CUP_BUILD_IMAGE_NAME: cup/flipt:latest
-        run: ./build.sh hack fliptcup:publish
+          CUP_BUILD_IMAGE_NAME: ${{ matrix.image }}
+        run: ./build.sh ${{ matrix.command }}
