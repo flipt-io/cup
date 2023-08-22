@@ -68,17 +68,14 @@ func main() {
 				},
 				Action: func(ctx *cli.Context) error {
 					return withClient(ctx.Context, func(client *dagger.Client, platform dagger.Platform) error {
-						variants, err := buildVariants(ctx, client)
+						base, err := build.Base(ctx.Context, client)
 						if err != nil {
 							return err
 						}
 
-						_, err = client.Container().Export(
+						_, err = build.Variant(client, base, platform).Export(
 							ctx.Context,
 							ctx.String("output"),
-							dagger.ContainerExportOpts{
-								PlatformVariants: variants,
-							},
 						)
 
 						return err
@@ -172,20 +169,15 @@ func main() {
 											return err
 										}
 
-										variants, err := build.Variants(ctx.Context, client, base, build.WithVariantExtention(
-											hack.FliptController(ctx.Context, client, base),
-										))
-										if err != nil {
-											return err
-										}
-
-										_, err = client.Container().Export(
+										_, err = hack.FliptController(
+											ctx.Context,
+											client,
+											base,
+										)(build.Variant(client, base, platform)).Export(
 											ctx.Context,
 											ctx.String("output"),
-											dagger.ContainerExportOpts{
-												PlatformVariants: variants,
-											},
 										)
+
 										return err
 									})
 								},

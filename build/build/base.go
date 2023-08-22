@@ -115,7 +115,8 @@ func Base(ctx context.Context, client *dagger.Client, opts ...Option) (*dagger.C
 				p := platforms.MustParse(string(platform))
 
 				binary := fmt.Sprintf("bin/%s/%s/%s", p.OS, p.Architecture, name)
-				build, err := base.WithEnvVariable("GOOS", p.OS).
+				build, err := base.
+					WithEnvVariable("GOOS", p.OS).
 					WithEnvVariable("GOARCH", p.Architecture).
 					WithExec([]string{"sh", "-c", fmt.Sprintf("go build -o %s ./cmd/%s/*.go", binary, name)}).
 					Sync(ctx)
