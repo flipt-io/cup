@@ -1,2 +1,5 @@
 *.wasm
+*.tar
 cupd.json
+.DSStore
+node_modules
