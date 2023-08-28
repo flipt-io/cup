@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/flipt-io/cup/compare/v0.1.0...v0.1.1) (2023-08-28)
+
+
+### Features
+
+* **github:** add cup release upload step ([1589ca8](https://github.com/flipt-io/cup/commit/1589ca8e0dcdcc846c3ec00b3d7c6b686b804782))
+
 ## 0.1.0 (2023-08-28)
 
 
