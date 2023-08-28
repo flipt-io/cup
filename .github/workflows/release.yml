@@ -12,7 +12,56 @@ name: release-please
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: google-github-actions/release-please-action@v3
+        id: release
         with:
           command: manifest
+
+  upload-cup:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            os: linux
+            arch: amd64
+          - runner: ubuntu-latest
+            os: linux
+            arch: arm64
+          - runner: macos-latest
+            os: darwin
+            arch: amd64
+          - runner: macos-latest
+            os: darwin
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.21'
+
+      - uses: actions/checkout@v3
+
+      - name: Prepare Directory
+        run: mkdir bin
+
+      - name: Build Cup
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: go build -o bin/. ./cmd/cup/...
+
+      - name: Archive Cup
+        working-directory: bin
+        run: tar -a -cvf cup_${{ matrix.os }}_${{ matrix.arch }}.tar.gz cup
+
+      - name: Upload Release Artifact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ needs.release_please.outputs.tag_name }} ./bin/cup_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
