@@ -30,7 +30,7 @@ A configurable and extensible server for managing and exposing API resources dir
 It exposes a Kubernetes-like declarative API, which organizes resources into typed (group + version + kind) sets.
 Resources can be listed, read, updated, and deleted. When changes to the state of a resource are made, the resulting
 calculated difference is automatically proposed as a pull or merge request on a target Git SCM.
-How resources map to and from API request payloads to files in your repository is handled by [Controllers](#controllers).
+How resources map to and from API request payloads to files in your repository is handled by [Controllers](https://cup.flipt.io/configuration/controllers).
 Controllers are configurable and broadly extensible through the power of WASM via the [Wazero](htts://github.com/tetratelabs/wazero) runtime.
 
 ## 📣 Feedback
@@ -126,6 +126,16 @@ FLAGS
 
 `cup` is a CLI that is heavily influenced by `kubectl`.
 It can be used locally to interact and introspect a running `cupd`.
+
+### Installation
+
+#### MacOS
+
+```console
+brew tap flipt-io/brew
+
+brew install cup
+```
 
 ### Building
 
