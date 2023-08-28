@@ -64,4 +64,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ needs.release_please.outputs.tag_name }} ./bin/cup_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
+          gh release upload ${{ needs.release-please.outputs.tag_name }} ./bin/cup_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
