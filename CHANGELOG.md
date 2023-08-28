@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/flipt-io/cup/compare/v0.1.1...v0.1.2) (2023-08-28)
+
+
+### Bug Fixes
+
+* **github:** use correct job id when uploading ([183259a](https://github.com/flipt-io/cup/commit/183259a61c6c453d3f9d4954cfad3c7a174e6baa))
+
 ## [0.1.1](https://github.com/flipt-io/cup/compare/v0.1.0...v0.1.1) (2023-08-28)
 
 
