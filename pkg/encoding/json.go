@@ -10,14 +10,19 @@ type JSON[T any] struct {
 	*json.Decoder
 }
 
-type JSONEncoding[T any] struct{}
+type JSONEncoding[T any] struct {
+	Prefix string
+	Indent string
+}
 
 func (j JSONEncoding[T]) Extension() string {
 	return "json"
 }
 
 func (j *JSONEncoding[T]) NewEncoder(r io.Writer) TypedEncoder[T] {
-	return NewJSONEncoder[T](r)
+	enc := NewJSONEncoder[T](r)
+	enc.SetIndent(j.Prefix, j.Indent)
+	return enc
 }
 
 func (j *JSONEncoding[T]) NewDecoder(w io.Reader) TypedDecoder[T] {

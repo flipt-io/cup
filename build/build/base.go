@@ -64,7 +64,11 @@ func Base(ctx context.Context, client *dagger.Client, opts ...Option) (*dagger.C
 		WithEnvVariable("GOCACHE", goBuildCachePath).
 		WithEnvVariable("GOMODCACHE", goModCachePath).
 		WithExec([]string{"apk", "add", "gcc", "build-base"}).
-		WithDirectory("/src", client.Host().Directory("."), dagger.ContainerWithDirectoryOpts{
+		WithDirectory("/src", client.Host().Directory(".", dagger.HostDirectoryOpts{
+			Exclude: []string{
+				"./docs/",
+			},
+		}), dagger.ContainerWithDirectoryOpts{
 			Include: []string{
 				"./build/",
 				"./cmd/",
