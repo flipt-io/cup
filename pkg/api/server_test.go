@@ -242,11 +242,7 @@ func Test_Server_Put(t *testing.T) {
 	data, err := io.ReadAll(fi)
 	require.NoError(t, err)
 
-	expected := &bytes.Buffer{}
-	require.NoError(t, json.Compact(expected, []byte(bazPayload)))
-	expected.Write([]byte{'\n'})
-
-	assert.Equal(t, expected.Bytes(), data)
+	assert.Equal(t, bazPayload, string(data))
 }
 
 func Test_Server_Delete(t *testing.T) {
@@ -297,15 +293,16 @@ func Test_Server_Delete(t *testing.T) {
 }
 
 const bazPayload = `{
-    "apiVersion": "test.cup.flipt.io/v1alpha1",
-    "kind": "Resource",
-    "metadata": {
-        "namespace": "default",
-        "name": "baz",
-        "labels": {
-            "foo": "bar"
-        },
-        "annotations": {}
+  "apiVersion": "test.cup.flipt.io/v1alpha1",
+  "kind": "Resource",
+  "metadata": {
+    "namespace": "default",
+    "name": "baz",
+    "labels": {
+      "foo": "bar"
     },
-    "spec": {}
-}`
+    "annotations": {}
+  },
+  "spec": {}
+}
+`
