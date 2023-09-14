@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	defaultNamespaceTmpl = `{{ .Namespace }}/*.json`
+	defaultNamespaceTmpl = `{{ .Namespace }}/{{ .Group }}-{{ .Version }}-{{ .Kind }}-*.json`
 	defaultResourceTmpl  = `{{ .Namespace }}/{{ .Group }}-{{ .Version }}-{{ .Kind }}-{{ .Name }}.json`
 )
 
