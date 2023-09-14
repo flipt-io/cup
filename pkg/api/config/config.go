@@ -84,7 +84,10 @@ func New(ctx context.Context, cfg *config.Config) (*api.Configuration, error) {
 			if err := core.DecodeController(
 				buf,
 				func(tc core.TemplateController) error {
-					c.Controllers[tc.Metadata.Name] = template.New()
+					c.Controllers[tc.Metadata.Name] = template.New(
+						template.WithListTemplate(tc.Spec.Spec.ListTemplate),
+						template.WithResourceTemplate(tc.Spec.Spec.ResourceTemplate),
+					)
 					return nil
 				},
 				func(w core.WASMController) error {

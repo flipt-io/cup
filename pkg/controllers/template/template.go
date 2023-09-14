@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	defaultNamespaceTmpl = `{{ .Namespace }}/{{ .Group }}-{{ .Version }}-{{ .Kind }}-*.json`
-	defaultResourceTmpl  = `{{ .Namespace }}/{{ .Group }}-{{ .Version }}-{{ .Kind }}-{{ .Name }}.json`
+	defaultListTmpl     = `{{ .Namespace }}/{{ .Group }}-{{ .Version }}-{{ .Kind }}-*.json`
+	defaultResourceTmpl = `{{ .Namespace }}/{{ .Group }}-{{ .Version }}-{{ .Kind }}-{{ .Name }}.json`
 )
 
 var funcs = template.FuncMap{
@@ -38,7 +38,7 @@ type ResourceEncoding interface {
 // encoding them using the provided marshaller.
 type Controller struct {
 	encoding     ResourceEncoding
-	nsTmpl       *template.Template
+	listTmpl     *template.Template
 	resourceTmpl *template.Template
 }
 
@@ -50,9 +50,9 @@ func New(opts ...containers.Option[Controller]) *Controller {
 			Prefix: "",
 			Indent: "  ",
 		},
-		nsTmpl: template.Must(template.New("ns").
+		listTmpl: template.Must(template.New("list").
 			Funcs(funcs).
-			Parse(defaultNamespaceTmpl),
+			Parse(defaultListTmpl),
 		),
 		resourceTmpl: template.Must(template.New("resource").
 			Funcs(funcs).
@@ -69,6 +69,37 @@ func New(opts ...containers.Option[Controller]) *Controller {
 func WithResourceEncoding(e ResourceEncoding) containers.Option[Controller] {
 	return func(c *Controller) {
 		c.encoding = e
+	}
+}
+
+// WithListTemplate lets you override the default namespace template
+// for identifying which files should be respected and returned for a given
+// resource type and namespace
+func WithListTemplate(tmpl string) containers.Option[Controller] {
+	if tmpl == "" {
+		return func(c *Controller) {}
+	}
+
+	return func(c *Controller) {
+		c.listTmpl = template.Must(template.New("list").
+			Funcs(funcs).
+			Parse(tmpl),
+		)
+	}
+}
+
+// WithResourceTemplate lets you override the default resource template
+// for identifying which file relates to the requested resource
+func WithResourceTemplate(tmpl string) containers.Option[Controller] {
+	if tmpl == "" {
+		return func(c *Controller) {}
+	}
+
+	return func(c *Controller) {
+		c.resourceTmpl = template.Must(template.New("resource").
+			Funcs(funcs).
+			Parse(tmpl),
+		)
 	}
 }
 
@@ -103,7 +134,7 @@ func (c *Controller) List(_ context.Context, req *controllers.ListRequest) (reso
 	}()
 
 	buf := &bytes.Buffer{}
-	if err := c.nsTmpl.Execute(buf, req); err != nil {
+	if err := c.listTmpl.Execute(buf, req); err != nil {
 		return nil, err
 	}
 

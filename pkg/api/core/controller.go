@@ -74,8 +74,8 @@ type ControllerSpec[T any] struct {
 }
 
 type TemplateControllerSpec struct {
-	DirectoryTemplate string `json:"directory_template"`
-	PathTemplate      string `json:"path_template"`
+	ListTemplate     string `json:"list_template"`
+	ResourceTemplate string `json:"resource_template"`
 }
 
 type WASMControllerSpec struct {
