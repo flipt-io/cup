@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/flipt-io/cup/compare/v0.1.2...v0.2.0) (2023-09-15)
+
+
+### Features
+
+* **controller/template:** make resouce and list templates configurable ([25e4855](https://github.com/flipt-io/cup/commit/25e485591659500b41481a4880515a2a84c5e4ad))
+* **controllers/template:** indent JSON output ([ef5fb6e](https://github.com/flipt-io/cup/commit/ef5fb6e3201877ec2bd4191b828b4164fccc86ec))
+* google analytics ([#68](https://github.com/flipt-io/cup/issues/68)) ([4377909](https://github.com/flipt-io/cup/commit/4377909e106d20fcf8372d5dc8d6d4ea6451b0e2))
+
+
+### Bug Fixes
+
+* **api/server_test:** ensure new indented format ([036395a](https://github.com/flipt-io/cup/commit/036395a3f4b6221b3b9e5a783ff1134f36816e07))
+* **controllers/template:** ensure list glob facets by gvk and ns ([2e08416](https://github.com/flipt-io/cup/commit/2e084160736b8b55b471f2b9dd5b182649ac41d4))
+
 ## [0.1.2](https://github.com/flipt-io/cup/compare/v0.1.1...v0.1.2) (2023-08-28)
 
 
