@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -67,6 +69,7 @@ type Configuration struct {
 	Definitions     containers.MapStore[string, *core.ResourceDefinition]
 	Controllers     containers.MapStore[string, Controller]
 	Bindings        containers.MapStore[string, *core.Binding]
+	Transformers    containers.MapStore[string, *core.Transformer]
 	TailscaleClient tailscale.Client
 }
 
@@ -232,6 +235,45 @@ func (s *Server) register(cntl Controller, version string, def *core.ResourceDef
 			resource.APIVersion, resource.Kind,
 			resource.Metadata.Namespace, resource.Metadata.Name,
 		)
+
+		transformer, err := s.cfg.Transformers.Get(resource.Kind)
+		if err == nil && transformer != nil {
+			m := map[string]interface{}{}
+
+			err := json.Unmarshal(resource.Spec, &m)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			t := template.Must(template.New("").Parse(transformer.Spec.Template))
+			bb := &bytes.Buffer{}
+			err = t.Execute(bb, m)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// For transformed values store the transformed payload within the spec, along with the
+			// definition, that the user has specified.
+			// Also add a metadata label to mark this resource as transformed. So the clients that
+			// retrieve the definition are informed.
+			resource.Metadata.Labels = map[string]string{
+				"transformed": "yes",
+			}
+			a := map[string]json.RawMessage{}
+
+			a["definition"] = resource.Spec
+			a["transformed"] = bb.Bytes()
+
+			spec, err := json.Marshal(a)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			resource.Spec = spec
+		}
 
 		result, err := s.fs.Update(r.Context(), s.rev, message, func(f controllers.FSConfig) error {
 			return cntl.Put(r.Context(), &controllers.PutRequest{

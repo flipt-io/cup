@@ -7,6 +7,7 @@ import (
 const (
 	ResourceDefinitionKind = "ResourceDefinition"
 	BindingKind            = "Binding"
+	TransformerKind        = "Transformer"
 )
 
 // Resource is the core API resource definition used to communicate
@@ -38,4 +39,12 @@ type Binding Object[BindingSpec]
 type BindingSpec struct {
 	Resources  []string
 	Controller string
+}
+
+type Transformer Object[TransformerSpec]
+
+type TransformerSpec struct {
+	Kind       string
+	Controller string
+	Template   string // template to transform a ResourceDefinition into
 }

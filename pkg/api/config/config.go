@@ -22,9 +22,10 @@ import (
 
 func New(ctx context.Context, cfg *config.Config) (*api.Configuration, error) {
 	c := &api.Configuration{
-		Definitions: containers.MapStore[string, *core.ResourceDefinition]{},
-		Controllers: containers.MapStore[string, api.Controller]{},
-		Bindings:    containers.MapStore[string, *core.Binding]{},
+		Definitions:  containers.MapStore[string, *core.ResourceDefinition]{},
+		Controllers:  containers.MapStore[string, api.Controller]{},
+		Bindings:     containers.MapStore[string, *core.Binding]{},
+		Transformers: containers.MapStore[string, *core.Transformer]{},
 	}
 
 	dir := os.DirFS(cfg.API.Resources)
@@ -109,6 +110,14 @@ func New(ctx context.Context, cfg *config.Config) (*api.Configuration, error) {
 			}
 
 			c.Bindings[binding.Metadata.Name] = &binding
+		case core.TransformerKind:
+			var transformer core.Transformer
+
+			if err := json.NewDecoder(buf).Decode(&transformer); err != nil {
+				return fmt.Errorf("parsing transformer: %w", err)
+			}
+
+			c.Transformers[transformer.Spec.Kind] = &transformer
 		}
 
 		return nil
