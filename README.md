@@ -13,12 +13,11 @@
   </a>
 </div>
 
-> ⚠️ This is an active experiment into the benefits of managing an API over Git.
-> Expect it to change quite frequently.
-> Regardless, we really want your input, so please do give it a go.
-
 `cup` An Instant API for Git
 ----------------------------
+
+> [!WARNING]
+> This is an active experiment into the benefits of managing an API over Git, so expect it to change quite frequently.
 
 <div align="center">
   <img src="https://github.com/flipt-io/cup/assets/1253326/d408dbe2-51bf-414e-93ec-603e09d5c1fa" alt="CUP" width="240" />
