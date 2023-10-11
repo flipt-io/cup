@@ -9,3 +9,48 @@ to learn how they can be configured.
 </Callout>
 
 Resource definitions describe the schema for the different resource kinds available in a Cup instance.
+When you interact with the Cup API, you do so through the various resource definition configured.
+
+A Cup resource is comprised of a few components to build the entire definition.
+These components and concepts are taken directly from Kubernetes and its custom resource definitions (CRD).
+Each definition consists of:
+
+- A group
+- A set of kind names
+- Multiple versioned JSON schema definitions
+- Some extra user defined arbitrary metadata
+
+## Groups
+
+Groups are a top-level construct for grouping related kinds of resource definitions together.
+Usually a group name identifies an organization or domain for a set of related resource types.
+
+For example, `flipt.io` is the group for Flipt feature flag related resources.
+
+## Kind names
+
+Kinds are the the unique name identifier for a resource scoped within a particular group.
+As with Kubernetes CRDs, Cup's resource definitions required you to declare a few variations on the kinds name.
+
+These variations are:
+
+- `Kind` (canonical kind name in Title-case)
+- `singular` (lowercase term referring to a single instance of the kind)
+- `plural` (lowercase term referring to two or more instances of the kind)
+
+For example, for a Flipt feature flag we have the names:
+
+- `Kind` is `Flag`
+- `singular` is `flag`
+- `plural` is `flags`
+
+These different forms can be used by downstream tools to provide meaningful and readable interfaces when interacting with these resource kinds.
+
+## Versioned JSON Schema
+
+At their core, the resource definitions are comprised of schemas for the fields the resource kinds contain.
+Cup uses [JSON Schema](https://json-schema.org/) as the schema definition language.
+
+Cup organizes schemas into separate versions.
+This is important, because over time resources can and will change.
+Versions allow definition authors to provide guarantees to downstream consumers regarding the shape of resources.
