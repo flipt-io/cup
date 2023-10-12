@@ -82,7 +82,7 @@ sequenceDiagram
 
 Write requests on the other hand are a little more complicated.
 In this scenario, the filesystem abstraction passed to a Controller can handle writes.
-The API server which builds the implementation of the filesystem, will do so over a worktree on a new branch.
+In Git's case, the API server which builds the implementation of the filesystem, will do so over a worktree on a new branch.
 Ultimately, the server will add, commit and push changes made by the controller to the configured upstream.
 Once the branch is pushed, it will also open a pull request and return to the caller a URL for where to find it.
 
