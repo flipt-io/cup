@@ -17,7 +17,7 @@ By default, Flipt ships with a basic controller known as the `template` controll
 You will learn in the next section on [bindings](/concepts/bindings) how to configure which controllers handle which resource definitions.
 </Callout>
 
-Controllers are the most important extension point in Flipt.
+Controllers are the most important extension point in Cup.
 They allow operators to create custom transformation logic between API resources and their resulting representation in the repository.
 Meaning there is no strict requirement that these two concepts need to have a 1:1 mapping (though the `template` controller does support this kind of logic out of the box).
 
@@ -82,7 +82,7 @@ sequenceDiagram
 
 Write requests on the other hand are a little more complicated.
 In this scenario, the filesystem abstraction passed to a Controller can handle writes.
-The API server which builds the implementation of the filesystem, will do so over a worktree on a new branch.
+In Git's case, the API server which builds the implementation of the filesystem, will do so over a worktree on a new branch.
 Ultimately, the server will add, commit and push changes made by the controller to the configured upstream.
 Once the branch is pushed, it will also open a pull request and return to the caller a URL for where to find it.
 
