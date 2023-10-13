@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0](https://github.com/flipt-io/cup/compare/v0.2.0...v0.3.0) (2023-10-13)
+
+
+### Features
+
+* **concepts/controllers:** add callout linking to flipt controller ([4bb0963](https://github.com/flipt-io/cup/commit/4bb09637b748c3974fb7823d1bd7d897e5dcbc60))
+* **docs/concepts:** add details around bindings ([9f68ec8](https://github.com/flipt-io/cup/commit/9f68ec87201ca1d999ef2b77377119dfa2d906b8))
+* **docs/concepts:** add details around controllers ([8afae7d](https://github.com/flipt-io/cup/commit/8afae7d54d501c1a0989b9f6f82f1d5be9af3708))
+* **docs/concepts:** add details around resource definitions ([697e52a](https://github.com/flipt-io/cup/commit/697e52a07ca577437b85a8a7696a1020d6d2d147))
+
 ## [0.2.0](https://github.com/flipt-io/cup/compare/v0.1.2...v0.2.0) (2023-09-15)
 
 
