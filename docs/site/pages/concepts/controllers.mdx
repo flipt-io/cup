@@ -127,7 +127,7 @@ Head to [Configuration: Controller: Template](/configuration/controllers#templat
 ### WASM Controller
 
 The WASM controller leverages the [Wazero](https://wazero.io/) runtime for Go to support implementing Controllers in the language of your choice.
-WASM binary implementations should expose a command-line interfaces with a number of subcommands.
+WASM binary implementations should expose a command-line interface with a number of subcommands.
 
 <Callout emoji="💡">
 Checkout the [Flipt Controller](https://github.com/flipt-io/cup/blob/53f1aa7cfb90c3a11aecf62eb8d1b726623a37cd/ext/controllers/flipt.io/v1alpha1/cmd/flipt/main.go#L27-L32) we have implemented in Go. This is compiled to WASM so that we can managed features flags as configuration via Cup.
